@@ -1,5 +1,4 @@
 mod vector_field;
-use core::time;
 use std::f64::consts::PI;
 
 use nalgebra::SVector;
@@ -14,8 +13,8 @@ fn main() {
     // Second element is theta dot
     let pendulum_state: vector_field::VectorField<2> = vector_field::VectorField::new(
         [
-            |point: &SVector<f64, 2>, time: f64| point[1],
-            |point: &SVector<f64, 2>, time: f64| (-MU * point[1]) - ((G/L) * point[0].sin())
+            |point: &SVector<f64, 2>, _time: f64| point[1],
+            |point: &SVector<f64, 2>, _time: f64| (-MU * point[1]) - ((G/L) * point[0].sin())
         ]
     );
 
