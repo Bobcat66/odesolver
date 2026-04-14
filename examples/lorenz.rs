@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut solver = DOPRI5Solver::<3>::default();
     let point = SVector::<f64,3>::new(1.0,1.0,1.0);
-    let points = solver.solve(&lorenz_system,&point,0.0,20.0);
+    let points = solver.solve(&lorenz_system,&point,0.0,40.0);
     for (time, point) in &points {
         println!("t: {}, point: {:?}", time, point);
     }

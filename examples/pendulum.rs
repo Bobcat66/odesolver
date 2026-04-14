@@ -13,7 +13,6 @@ use std::io::{BufWriter, Write};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     
-    // END OF PLOTTERS TEST
 
     // A simple example of the ODE solver that models a pendulum
     const MU: f64 = 0.2; // This term represents energy loss to friction, heat, air resistance, etc.
@@ -41,13 +40,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The dynamics of the system are represented as a vector field over the state space, which maps each point of the state space to a vector describing its derivative
 
     
-    let file = File::create("lorenz.csv")?;
+    let file = File::create("pendulum.csv")?;
     let mut w = BufWriter::new(file);
 
-    writeln!(w, "t,x,y,z")?;
+    writeln!(w, "t,x,y")?;
 
     for (t, y) in points {
-        writeln!(w, "{},{},{},{}", t, y[0], y[1], y[2])?;
+        writeln!(w, "{},{},{}", t, y[0], y[1])?;
     }
 
     
