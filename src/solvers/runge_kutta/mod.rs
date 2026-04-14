@@ -4,9 +4,3 @@
 mod rkimpl;
 pub mod utils;
 pub mod dopri5;
-
-pub struct ButchersTableau<const S: usize,const E: usize> {
-     a: [[f64; S]; S], // stage coefficients
-    pub b: [[f64; S]; E], // solution coefficients
-    pub c: [f64; S] // timestamps
-}

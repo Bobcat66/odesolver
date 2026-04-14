@@ -70,33 +70,6 @@ impl<const D: usize> DOPRI5Solver<D> {
 }
 
 impl<const D: usize> Solver<D> for DOPRI5Solver<D> {
-    fn solve_single<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> (f64,SVector<f64,D>)
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D> 
-    {
-        let mut t = t_start;
-        let mut y = *y0;
-        let mut h = guess_timestep(ode, y0, t_start, self.atol, self.rtol);
-        self.k[0] = ode(t_start, y0);
-        while t < t_end {
-            let res = self.step(&ode, &y, t, h);
-
-            // compute error
-            let err_norm = scale_norm(&res.1,&y, self.atol, self.rtol);
-
-            // recalculate stepsize
-            let new_h = (h * self.safety * err_norm.powf(-0.2)).clamp(self.min_clamp,self.max_clamp);
-
-            // Accept or reject step
-            if err_norm <= 1.0 {
-                y = res.0;
-                self.k[0] = self.k[6];
-                t += h;
-            }
-            h = new_h
-        }
-        (t,y)
-    }
-
     fn solve<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
