@@ -4,9 +4,6 @@
 
 use crate::solvers::runge_kutta::butcher::{ButchersTableau, ExtendedButchersTableau};
 use crate::solvers::runge_kutta::rk_solver::RKSolver;
-use crate::solvers::solver::Solver;
-use crate::solvers::runge_kutta::rkimpl::*;
-use nalgebra::SVector;
 
 // Tableau
 const A: [[f64; 7]; 7] = [
@@ -47,60 +44,3 @@ impl ExtendedButchersTableau<7,4> for DOPRI5 {
 }
 
 pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5,7, 4, D>;
-
-/* 
-pub struct DOPRI5Solver<const D: usize> 
-{
-    pub atol: f64, // absolute tolerance
-    pub rtol: f64, // normalized tolerance
-    pub safety: f64, // safety value to reduce overshoot
-    pub min_clamp: f64, // minimum timestep clamp
-    pub max_clamp: f64, // maximum timestep clamp
-    k: [SVector<f64,D>; 7]
-}
-
-impl<const D: usize> Default for DOPRI5Solver<D> {
-    fn default() -> Self {
-        Self {
-            atol: 1e-3,
-            rtol: 1e-6,
-            safety: 0.9,
-            min_clamp: 1e-12,
-            max_clamp: f64::MAX,
-            k: [SVector::<f64,D>::zeros(); 7]
-        }
-    }
-}
-
-impl<const D: usize> Solver<D> for DOPRI5Solver<D> {
-    fn solve<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
-    {
-        let mut t = t_start;
-        let mut y = *y0;
-        let mut h = guess_timestep(ode, y0, t_start, self.atol, self.rtol);
-        let mut points: Vec<(f64,SVector<f64,D>)> = Vec::new();
-        points.push((t,y));
-        self.k[0] = ode(t_start, y0);
-        while t < t_end {
-            let res = rk_step_impl(&C, &A, &B5, &B4, ode, t, &y, &(self.k[0].clone()), h, &mut self.k);
-
-            // compute error
-            let err_norm = scale_norm(&res.1,&y, self.atol, self.rtol);
-
-            // recalculate stepsize
-            let new_h = (h * self.safety * err_norm.powf(-0.2)).clamp(self.min_clamp,self.max_clamp);
-
-            // Accept or reject step
-            if err_norm <= 1.0 {
-                y = res.0;
-                self.k[0] = self.k[6];
-                t += h;
-                points.push((t,y));
-            }
-            h = new_h;
-        }
-        points
-    }
-}
-*/
