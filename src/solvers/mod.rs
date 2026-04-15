@@ -3,4 +3,4 @@
 // the license found in the root directory of this project
 pub mod runge_kutta;
 pub mod solver;
-pub mod dense_solution;
+pub mod dense;
