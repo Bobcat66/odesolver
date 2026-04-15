@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use crate::solvers::dense::DenseOutput;
 use crate::solvers::solver::Solver;
 use crate::solvers::runge_kutta::rkimpl::ark_solve_impl;
 use nalgebra::SVector;
@@ -53,5 +54,11 @@ impl<Tableau, const S: usize, const P: usize, const D: usize> Solver<D> for Adap
             self.safety,
             &mut self.k
         )
+    }
+
+    fn solve_dense<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<D>)
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+    {
+        
     }
 }

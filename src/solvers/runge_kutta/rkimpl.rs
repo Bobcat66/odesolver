@@ -4,7 +4,7 @@
 
 use nalgebra::SVector;
 
-use crate::solvers::runge_kutta::butcher::{ButchersTableau, ExtendedButchersTableau};
+use crate::solvers::{dense::{DenseInterpolant, DenseOutput}, runge_kutta::{butcher::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant}};
 
 pub fn rk_stage_impl<Tableau, const S: usize, const D: usize, F>(
     ode: &F,
@@ -135,4 +135,62 @@ pub fn ark_solve_impl<Tableau, const S: usize, const P: usize, const D: usize, F
         h = new_h;
     }
     points
+}
+
+// Adaptive RK dense solve
+pub fn ark_solve_dense_impl<Tableau, const S: usize, const P: usize, const D: usize, F>(
+    ode: &F,
+    y0: &SVector<f64,D>,
+    t_start: f64,
+    t_end: f64,
+    atol: f64,
+    rtol: f64,
+    min_clamp: f64,
+    max_clamp: f64,
+    safety: f64,
+    k: &mut [SVector<f64, D>; S]
+) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<D>)
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
+    Tableau: ExtendedButchersTableau<S,P>
+{
+    let mut t = t_start;
+    let mut y = *y0;
+    let mut h = guess_timestep(ode, y0, t_start, atol, rtol);
+    let mut points: Vec<(f64,SVector<f64,D>)> = Vec::new();
+    let mut stages: Vec<[SVector<f64,D>; S]> = Vec::new();
+    let mut steps: usize = 0;
+    points.push((t,y));
+    let mut f = ode(t_start, y0);
+    while t < t_end {
+        let res = ark_step_impl::<Tableau,S,P,D,_>(ode, t, &y, &f, h, k);
+
+        // compute error
+        let err_norm = scale_norm(&res.1,&y, atol, rtol);
+
+        // recalculate stepsize
+        let new_h = (h * safety * err_norm.powf(-0.2)).clamp(min_clamp,max_clamp);
+
+        // Accept or reject step
+        if err_norm <= 1.0 {
+            y = res.0;
+            t += h;
+            f = if Tableau::FSAL {k[S - 1]} else {ode(t,&y)};
+            points.push((t,y));
+            stages.push((*k).clone());
+            steps += 1;
+        }
+        h = new_h;
+    }
+    stages.push((*k).clone());
+    let mut segments: Vec<(f64,Box<dyn DenseInterpolant<D>>)> = Vec::new();
+    for i in 0..(steps-1) {
+        segments.push(
+            (
+                points[i].0,
+                Box::new(RKInterpolant::new(points[i].0,points[i + 1].0, points[i].1, stages[i], Tableau::P))
+            )
+        );
+    }
+
+    (points,DenseOutput::new(segments))
 }
