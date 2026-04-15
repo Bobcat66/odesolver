@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The dynamics of the system are represented as a vector field over the state space, which maps each point of the state space to a vector describing its derivative
 
     
-    let file = File::create("pendulum.csv")?;
+    let file = File::create("pendulum2.csv")?;
     let mut w = BufWriter::new(file);
 
     writeln!(w, "t,x,y")?;

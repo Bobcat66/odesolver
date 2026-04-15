@@ -4,5 +4,5 @@
 mod rkimpl;
 pub mod dopri5;
 pub mod rk_dense;
-pub mod rk_solver;
+pub mod adaptive_rk_solver;
 pub mod butcher;

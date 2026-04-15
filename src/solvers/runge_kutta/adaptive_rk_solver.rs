@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 
 use crate::solvers::solver::Solver;
-use crate::solvers::runge_kutta::rkimpl::rk_solve_impl_fsal;
+use crate::solvers::runge_kutta::rkimpl::ark_solve_impl;
 use nalgebra::SVector;
 
 use crate::solvers::runge_kutta::butcher::*;
 
 // S is the number of stages, D is the dims
-pub struct RKSolver<Tableau, const S: usize, const P: usize, const D: usize> 
+pub struct AdaptiveRKSolver<Tableau, const S: usize, const P: usize, const D: usize> 
     where Tableau: ExtendedButchersTableau<S,P>
 {
     pub atol: f64, // absolute tolerance
@@ -19,7 +19,7 @@ pub struct RKSolver<Tableau, const S: usize, const P: usize, const D: usize>
     _marker: PhantomData<Tableau>
 }
 
-impl<Tableau, const S: usize, const P: usize, const D: usize> Default for RKSolver<Tableau,S,P,D> 
+impl<Tableau, const S: usize, const P: usize, const D: usize> Default for AdaptiveRKSolver<Tableau,S,P,D> 
     where Tableau: ExtendedButchersTableau<S,P> 
 {
     fn default() -> Self {
@@ -35,17 +35,13 @@ impl<Tableau, const S: usize, const P: usize, const D: usize> Default for RKSolv
     }
 }
 
-impl<Tableau, const S: usize, const P: usize, const D: usize> Solver<D> for RKSolver<Tableau,S,P,D>
+impl<Tableau, const S: usize, const P: usize, const D: usize> Solver<D> for AdaptiveRKSolver<Tableau,S,P,D>
     where Tableau: ExtendedButchersTableau<S,P> 
 {
     fn solve<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        rk_solve_impl_fsal(
-            Tableau::c(),
-            Tableau::a(),
-            Tableau::b(),
-            Tableau::b_low(), 
+        ark_solve_impl::<Tableau,S,P,D,_>(
             ode,
             y0,
             t_start,

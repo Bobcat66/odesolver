@@ -4,9 +4,9 @@
 
 use nalgebra::SVector;
 
-pub fn rk_stage_impl<F, const S: usize, const D: usize>(
-    c: &[f64; S],
-    a: &[[f64; S]; S],
+use crate::solvers::runge_kutta::butcher::{ButchersTableau, ExtendedButchersTableau};
+
+pub fn rk_stage_impl<Tableau, const S: usize, const D: usize, F>(
     ode: &F,
     t0: f64,
     y0: &SVector<f64, D>,
@@ -14,32 +14,33 @@ pub fn rk_stage_impl<F, const S: usize, const D: usize>(
     h: f64,
     k: &mut [SVector<f64, D>; S]
 ) -> ()
-    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
+    Tableau: ButchersTableau<S>
 {
     k[0] = *f_t0;
     for i in 1..S {
         let mut dy = SVector::<f64, D>::zeros();
         for j in 0..i {
-            dy += k[j] * a[i][j];
+            dy += k[j] * Tableau::A[i][j];
         }
         dy *= h;
-        k[i] = ode(t0 + h * c[i],&(y0 + dy));
+        k[i] = ode(t0 + h * Tableau::C[i],&(y0 + dy));
     }
 }
 
-pub fn rk_weight_impl<const S: usize, const D: usize>(
-    b_h: &[f64; S], 
-    b_l: &[f64; S],
+// Adaptive RK weights
+pub fn ark_weight_impl<Tableau, const S: usize, const P: usize, const D: usize>(
     y0: &SVector<f64, D>,
     h: f64,
     k: &[SVector<f64,D>;S]
 ) -> (SVector<f64,D>,SVector<f64,D>)
+    where Tableau: ExtendedButchersTableau<S,P>
 {
     let mut y1: SVector<f64, D> = SVector::zeros();
     let mut err: SVector<f64, D> = SVector::zeros();
     for i in 0..S {
-        y1 += k[i] * b_h[i];
-        err += k[i] * (b_h[i] - b_l[i]);
+        y1 += k[i] * Tableau::B[i];
+        err += k[i] * (Tableau::B[i] - Tableau::B_LOW[i]);
     }
     y1 *= h;
     y1 += y0;
@@ -47,11 +48,8 @@ pub fn rk_weight_impl<const S: usize, const D: usize>(
     (y1,err)
 }
 
-pub fn rk_step_impl<F, const S: usize, const D: usize>(
-    c: &[f64; S],
-    a: &[[f64; S]; S],
-    b_h: &[f64; S], 
-    b_l: &[f64; S],
+// Adaptive RK weights
+pub fn ark_step_impl<Tableau, const S: usize, const P: usize, const D: usize, F>(
     ode: &F,
     t0: f64,
     y0: &SVector<f64, D>,
@@ -59,10 +57,11 @@ pub fn rk_step_impl<F, const S: usize, const D: usize>(
     h: f64,
     k: &mut [SVector<f64, D>; S]
 ) -> (SVector<f64, D>,SVector<f64, D>) 
-    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
+    Tableau: ExtendedButchersTableau<S,P>
 {
-    rk_stage_impl(c, a, ode, t0, y0, f_t0, h, k);
-    rk_weight_impl(b_h, b_l, y0, h, k)
+    rk_stage_impl::<Tableau,S,D,_>(ode, t0, y0, f_t0, h, k);
+    ark_weight_impl::<Tableau,S,P,D>(y0, h, k)
 }
 
 // Normalizes vec using RMS, scaled to y
@@ -95,12 +94,8 @@ pub fn guess_timestep<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, t0: f64, 
     (h0 * 100.0).min((0.01/d1.max(d2)).powf(0.2))
 }
 
-
-pub fn rk_solve_impl_fsal<const S: usize, F, const D: usize>(
-    c: &[f64; S],
-    a: &[[f64; S]; S],
-    b_h: &[f64; S], 
-    b_l: &[f64; S],
+// Adaptive RK Solve
+pub fn ark_solve_impl<Tableau, const S: usize, const P: usize, const D: usize, F>(
     ode: &F,
     y0: &SVector<f64,D>,
     t_start: f64,
@@ -112,7 +107,8 @@ pub fn rk_solve_impl_fsal<const S: usize, F, const D: usize>(
     safety: f64,
     k: &mut [SVector<f64, D>; S]
 ) -> Vec<(f64,SVector<f64,D>)> 
-    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
+    Tableau: ExtendedButchersTableau<S,P>
 {
     let mut t = t_start;
     let mut y = *y0;
@@ -121,7 +117,7 @@ pub fn rk_solve_impl_fsal<const S: usize, F, const D: usize>(
     points.push((t,y));
     let mut f = ode(t_start, y0);
     while t < t_end {
-        let res = rk_step_impl(c, a, b_h, b_l, ode, t, &y, &f, h, k);
+        let res = ark_step_impl::<Tableau,S,P,D,_>(ode, t, &y, &f, h, k);
 
         // compute error
         let err_norm = scale_norm(&res.1,&y, atol, rtol);
@@ -132,8 +128,8 @@ pub fn rk_solve_impl_fsal<const S: usize, F, const D: usize>(
         // Accept or reject step
         if err_norm <= 1.0 {
             y = res.0;
-            f = k[S - 1];
             t += h;
+            f = if Tableau::FSAL {k[S - 1]} else {ode(t,&y)};
             points.push((t,y));
         }
         h = new_h;
