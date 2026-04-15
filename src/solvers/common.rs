@@ -33,8 +33,8 @@ pub fn select_initial_timestep<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, 
     where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
 {   
     let scale = (y0.abs() * rtol).add_scalar(atol);
-    let d0 = y0.component_div(&scale).norm();
-    let d1 = f0.component_div(&scale).norm();
+    let d0 = norm(y0, &scale);
+    let d1 = norm(f0, &scale);
 
     // Create initial guess
     let h0: f64 =  if d0 < 1e-5 || d1 < 1e-5 {1e-6} else {0.01 * d0 / d1};
@@ -42,7 +42,11 @@ pub fn select_initial_timestep<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, 
     // Take euler step to estimate curvature
     let y1 = y0 + h0 * f0;
     let f1 = ode(t0 + h0, &y1);
-    let d2 = ((f1 - f0).component_div(&scale) / h0).norm();
+    let d2 = norm(&(f1 - f0), &scale)/h0;
     
     (h0 * 100.0).min((0.01 / d1.max(d2)).powf(1.0/(err_order as f64 + 1.0)))
+}
+
+pub fn norm<const D: usize>(vec: &SVector<f64,D>,scale: &SVector<f64,D>) -> f64 {
+    (vec.component_div(&scale).norm_squared() / D as f64).sqrt()
 }

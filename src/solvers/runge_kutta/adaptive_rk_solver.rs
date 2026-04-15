@@ -8,7 +8,7 @@ use crate::solvers::solver::{Solver,DenseSolver};
 use crate::solvers::runge_kutta::rkimpl::{ark_err_impl};
 use nalgebra::SVector;
 
-use crate::solvers::runge_kutta::butcher::*;
+use crate::solvers::runge_kutta::const_config::*;
 
 pub struct AdaptiveRKKernelConfig {
     pub atol: f64, // absolute tolerance

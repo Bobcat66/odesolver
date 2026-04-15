@@ -4,7 +4,7 @@
 
 use nalgebra::SVector;
 
-use crate::solvers::{common::{PointState, SolverState}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{butcher::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant, rkimpl::{rk_stage_impl, rk_weight_impl}}};
+use crate::solvers::{common::{PointState, SolverState}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{const_config::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant, rkimpl::{rk_stage_impl, rk_weight_impl}}};
 
 // T is the RKKernel config type. The RKKernel is a stateless construct that only implements functions for a solver
 pub trait RKKernel<T, Tableau, const S: usize, const D: usize> 

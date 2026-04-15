@@ -4,7 +4,7 @@
 
 use nalgebra::SVector;
 
-use crate::solvers::{common::SolverState, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{butcher::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant}, solver::DenseSolver};
+use crate::solvers::{common::SolverState, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{const_config::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant}, solver::DenseSolver};
 
 pub fn rk_stage_impl<Tableau, const S: usize, const D: usize, F>(
     ode: &F,

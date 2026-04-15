@@ -2,12 +2,13 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use crate::solvers::runge_kutta::butcher::{ButchersTableau, ExtendedButchersTableau};
+use crate::solvers::runge_kutta::rk_stepper::ButchersTableau;
 use crate::solvers::runge_kutta::adaptive_rk_solver::AdaptiveRKSolver;
+use crate::solvers::runge_kutta::adaptive_rk::ShampineConfig;
 
 pub struct DOPRI5 {}
 
-impl ButchersTableau<7> for DOPRI5 {
+impl ButchersTableau<7,2> for DOPRI5 {
     const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
     const A: [[f64; 7]; 7] = [
         [           0.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],
@@ -18,13 +19,15 @@ impl ButchersTableau<7> for DOPRI5 {
         [ 9017.0/3168.0,     -355.0/33.0, 46732.0/5247.0,   49.0/176.0, -5103.0/18656.0,       0.0, 0.0],
         [    35.0/384.0,             0.0,   500.0/1113.0,  125.0/192.0,  -2187.0/6784.0, 11.0/84.0, 0.0]
     ];
-    const B: [f64; 7] = [35.0/384.0, 0.0, 500.0/1113.0, 125.0/192.0, -2187.0/6784.0, 11.0/84.0, 0.0];
+    const B: [[f64; 7]; 2] = [
+        [    35.0/384.0, 0.0,   500.0/1113.0, 125.0/192.0,    -2187.0/6784.0,    11.0/84.0,      0.0],
+        [5179.0/57600.0, 0.0, 7571.0/16695.0, 393.0/640.0, -92097.0/339200.0, 187.0/2100.0, 1.0/40.0]
+    ];
     const FSAL: bool = true;
-    const ORDER: usize = 5;
+    const ORDERS: [usize; 2] = [5, 4];
 }
 
-impl ExtendedButchersTableau<7,5> for DOPRI5 {
-    const B_LOW: [f64; 7] = [5179.0/57600.0, 0.0, 7571.0/16695.0, 393.0/640.0, -92097.0/339200.0, 187.0/2100.0, 1.0/40.0];
+impl ShampineConfig<5,7> for DOPRI5 {
     const P: [[f64; 5]; 7] = [
         [0.0, 1.0,   -8048581381.0/2820520608.0,     8663915743.0/2820520608.0,  -12715105075.0/11282082432.0],
         [0.0, 0.0,                          0.0,                           0.0,                           0.0],
@@ -34,7 +37,6 @@ impl ExtendedButchersTableau<7,5> for DOPRI5 {
         [0.0, 0.0,     -282668133.0/205662961.0,      2019193451.0/616988883.0,     -1453857185.0/822651844.0],
         [0.0, 0.0,        40617522.0/29380423.0,       -110615467.0/29380423.0,         69997945.0/29380423.0]
     ];
-    const EMBEDDED_ORDER: usize = 4;
 }
 
 pub type DOPRI5Solver<const D: usize> = AdaptiveRKSolver<DOPRI5,7, 5, D>;
