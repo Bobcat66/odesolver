@@ -4,38 +4,139 @@
 
 use nalgebra::SVector;
 
-pub fn euler_step_impl<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, t0: f64, h: f64) -> SVector<f64,D> 
+pub fn rk_stage_impl<F, const S: usize, const D: usize>(
+    c: &[f64; S],
+    a: &[[f64; S]; S],
+    ode: &F,
+    t0: f64,
+    y0: &SVector<f64, D>,
+    f_t0: &SVector<f64, D>,
+    h: f64,
+    k: &mut [SVector<f64, D>; S]
+) -> ()
     where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
 {
-    y0 + (h * ode(t0, y0))
-}
-
-pub fn rk4_step_impl<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, t0: f64, h: f64) -> SVector<f64,D>
-    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
-{
-    let half_h = h/2.0;
-    let half_t = t0 + half_h;
-    let k1 = ode(t0, y0);
-    let k2 = ode(half_t, &(y0 + (k1 * half_h)));
-    let k3 = ode(half_t, &(y0 + (k2 * half_h)));
-    let k4 = ode(t0 + h, &(y0 + (k3 * h)));
-    y0 + ((h / 6.0) * (k1 + (2.0 * k2) + (2.0 * k3) + k4))
-}
-
-// Returns result, error, and first step of next stage
-/* 
-    fn step_old<F>(&self, ode: &F, y0: &SVector<f64,D>, k1: &SVector<f64,D>, t0: f64, h: f64) -> (SVector<f64,D>,SVector<f64,D>,SVector<f64,D>) 
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
-    {
-        
-        let k2 = ode(t0 + h * (1.0/5.0), &(y0 + h * (k1 * (1.0/5.0))));
-        let k3 = ode(t0 + h * (3.0/10.0), &(y0 + h * (k1 * (3.0/40.0) + k2 * (9.0/40.0))));
-        let k4 = ode(t0 + h * (4.0/5.0), &(y0 + h * (k1 * (44.0/45.0) + k2 * (-56.0/15.0) + k3 * (32.0/9.0))));
-        let k5 = ode(t0 + h * (8.0/9.0), &(y0 + h * (k1 * (19372.0/6561.0) + k2 * (-25360.0/2187.0) + k3 * (64448.0/6561.0) + k4 * (-212.0/729.0))));
-        let k6 = ode(t0 + h,&(y0 + h * (k1 * (9017.0/3168.0) + k2 * (-355.0/33.0) + k3 * (46732.0/5247.0) + k4 * (49.0/176.0) + k5 * (-5103.0/18656.0))));
-        let k7 = ode(t0 + h,&(y0 + h * (k1 * (35.0/384.0) + k3 * (500.0/1113.0) + k4 * (125.0/192.0) + k5 * (-2187.0/6784.0) + k6 * (11.0/84.0))));
-        let y1 = y0 + h * (k1 * (35.0/384.0) + k3 * (500.0/1113.0) + k4 * (125.0/192.0) + k5 * (-2187.0/6784.0) + k6 * (11.0/84.0));
-        let e1 = h * (k1 * (35.0/384.0 - 5179.0/57600.0) + k3 * (500.0/1113.0 - 7571.0/16695.0) + k4 * (125.0/192.0 - 393.0/640.0) + k5 * (-2187.0/6784.0 + 92097.0/339200.0) + k6 * (11.0/84.0 - 187.0/2100.0) + k7 * (-1.0/40.0));
-        (y1,e1,k7)
+    k[0] = *f_t0;
+    for i in 1..S {
+        let mut dy = SVector::<f64, D>::zeros();
+        for j in 0..i {
+            dy += k[j] * a[i][j];
+        }
+        dy *= h;
+        k[i] = ode(t0 + h * c[i],&(y0 + dy));
     }
-*/
+}
+
+pub fn rk_weight_impl<const S: usize, const D: usize>(
+    b_h: &[f64; S], 
+    b_l: &[f64; S],
+    y0: &SVector<f64, D>,
+    h: f64,
+    k: &[SVector<f64,D>;S]
+) -> (SVector<f64,D>,SVector<f64,D>)
+{
+    let mut y1: SVector<f64, D> = SVector::zeros();
+    let mut err: SVector<f64, D> = SVector::zeros();
+    for i in 0..S {
+        y1 += k[i] * b_h[i];
+        err += k[i] * (b_h[i] - b_l[i]);
+    }
+    y1 *= h;
+    y1 += y0;
+    err *= h;
+    (y1,err)
+}
+
+pub fn rk_step_impl<F, const S: usize, const D: usize>(
+    c: &[f64; S],
+    a: &[[f64; S]; S],
+    b_h: &[f64; S], 
+    b_l: &[f64; S],
+    ode: &F,
+    t0: f64,
+    y0: &SVector<f64, D>,
+    f_t0: &SVector<f64, D>,
+    h: f64,
+    k: &mut [SVector<f64, D>; S]
+) -> (SVector<f64, D>,SVector<f64, D>) 
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+{
+    rk_stage_impl(c, a, ode, t0, y0, f_t0, h, k);
+    rk_weight_impl(b_h, b_l, y0, h, k)
+}
+
+// Normalizes vec using RMS, scaled to y
+pub fn scale_norm<const D: usize>(vec: &SVector<f64,D>, y: &SVector<f64,D>, atol: f64, rtol: f64) -> f64
+{
+    let mut vec_norm = 0.0;
+    for i in 0..D {
+        let scale = atol + rtol * y[i].abs();
+        vec_norm += (vec[i]/scale).powi(2);
+    }
+    (vec_norm / D as f64).sqrt()
+}
+
+// Returns initial guess for h
+pub fn guess_timestep<F, const D: usize>(ode: &F, y0: &SVector<f64,D>, t0: f64, atol: f64, rtol: f64) -> f64
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+{
+    let d0 = scale_norm(y0, y0, atol, rtol);
+    let ydot_0 = ode(t0,y0);
+    let d1 = scale_norm(&ydot_0,y0, atol, rtol);
+
+    // Create initial guess
+    let h0: f64 =  if d0 < 1e-5 || d1 < 1e-5 {1e-6} else {0.01 * d0 / d1};
+
+    // Take euler step to estimate curvature
+    let y1 = y0 + h0 * ydot_0;
+    let ydot_1 = ode(t0+h0,&y1);
+    let d2 = scale_norm(&(ydot_1 - ydot_0), y0, atol, rtol);
+    
+    (h0 * 100.0).min((0.01/d1.max(d2)).powf(0.2))
+}
+
+
+pub fn rk_solve_impl_fsal<const S: usize, F, const D: usize>(
+    c: &[f64; S],
+    a: &[[f64; S]; S],
+    b_h: &[f64; S], 
+    b_l: &[f64; S],
+    ode: &F,
+    y0: &SVector<f64,D>,
+    t_start: f64,
+    t_end: f64,
+    atol: f64,
+    rtol: f64,
+    min_clamp: f64,
+    max_clamp: f64,
+    safety: f64,
+    k: &mut [SVector<f64, D>; S]
+) -> Vec<(f64,SVector<f64,D>)> 
+    where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+{
+    let mut t = t_start;
+    let mut y = *y0;
+    let mut h = guess_timestep(ode, y0, t_start, atol, rtol);
+    let mut points: Vec<(f64,SVector<f64,D>)> = Vec::new();
+    points.push((t,y));
+    let mut f = ode(t_start, y0);
+    while t < t_end {
+        let res = rk_step_impl(c, a, b_h, b_l, ode, t, &y, &f, h, k);
+
+        // compute error
+        let err_norm = scale_norm(&res.1,&y, atol, rtol);
+
+        // recalculate stepsize
+        let new_h = (h * safety * err_norm.powf(-0.2)).clamp(min_clamp,max_clamp);
+
+        // Accept or reject step
+        if err_norm <= 1.0 {
+            y = res.0;
+            f = k[S - 1];
+            t += h;
+            points.push((t,y));
+        }
+        h = new_h;
+    }
+    points
+}

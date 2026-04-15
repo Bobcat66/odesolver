@@ -2,8 +2,10 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
+use crate::solvers::runge_kutta::butcher::{ButchersTableau, ExtendedButchersTableau};
+use crate::solvers::runge_kutta::rk_solver::RKSolver;
 use crate::solvers::solver::Solver;
-use crate::solvers::runge_kutta::utils::*;
+use crate::solvers::runge_kutta::rkimpl::*;
 use nalgebra::SVector;
 
 // Tableau
@@ -21,6 +23,32 @@ const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
 const B5: [f64; 7] = [35.0/384.0, 0.0, 500.0/1113.0, 125.0/192.0, -2187.0/6784.0, 11.0/84.0, 0.0];
 const B4: [f64; 7] = [5179.0/57600.0, 0.0, 7571.0/16695.0, 393.0/640.0, -92097.0/339200.0, 187.0/2100.0, 1.0/40.0];
 
+const P: [[f64; 4]; 7] = [
+    [1.0,   -8048581381.0/2820520608.0,     8663915743.0/2820520608.0,  -12715105075.0/11282082432.0],
+    [0.0,                          0.0,                           0.0,                           0.0],
+    [0.0, 131558114200.0/32700410799.0,  -68118460800.0/10900136933.0,   87487479700.0/32700410799.0],
+    [0.0,    -1754552775.0/470086768.0,    14199869525.0/1410260304.0,   -10690763975.0/1880347072.0],
+    [0.0, 127303824393.0/49829197408.0, -318862633887.0/49829197408.0, 701980252875.0/199316789632.0],
+    [0.0,     -282668133.0/205662961.0,      2019193451.0/616988883.0,     -1453857185.0/822651844.0],
+    [0.0,        40617522.0/29380423.0,       -110615467.0/29380423.0,         69997945.0/29380423.0]
+];
+
+pub struct DOPRI5 {}
+
+impl ButchersTableau<7> for DOPRI5 {
+    fn c() -> &'static [f64; 7] {&C}
+    fn a() -> &'static [[f64; 7]; 7] {&A}
+    fn b() -> &'static [f64; 7] {&B5}
+}
+
+impl ExtendedButchersTableau<7,4> for DOPRI5 {
+    fn b_low() -> &'static [f64; 7] {&B4}
+    fn p() -> &'static [[f64; 4]; 7] {&P}
+}
+
+pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5,7, 4, D>;
+
+/* 
 pub struct DOPRI5Solver<const D: usize> 
 {
     pub atol: f64, // absolute tolerance
@@ -44,31 +72,6 @@ impl<const D: usize> Default for DOPRI5Solver<D> {
     }
 }
 
-impl<const D: usize> DOPRI5Solver<D> {
-
-    // Returns a tuple of solutions in the form (high_order,error)
-    fn step<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t0: f64, h: f64) -> (SVector<f64,D>,SVector<f64,D>) 
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
-    {
-        self.k[1] = ode(t0 + h * C[1], &(y0 + h * (self.k[0] * A[1][0])));
-        self.k[2] = ode(t0 + h * C[2], &(y0 + h * (self.k[0] * A[2][0] + self.k[1] * A[2][1])));
-        self.k[3] = ode(t0 + h * C[3], &(y0 + h * (self.k[0] * A[3][0] + self.k[1] * A[3][1] + self.k[2] * A[3][2])));
-        self.k[4] = ode(t0 + h * C[4], &(y0 + h * (self.k[0] * A[4][0] + self.k[1] * A[4][1] + self.k[2] * A[4][2] + self.k[3] * A[4][3])));
-        self.k[5] = ode(t0 + h * C[5], &(y0 + h * (self.k[0] * A[5][0] + self.k[1] * A[5][1] + self.k[2] * A[5][2] + self.k[3] * A[5][3] + self.k[4] * A[5][4])));
-        self.k[6] = ode(t0 + h * C[6], &(y0 + h * (self.k[0] * A[6][0] + self.k[1] * A[6][1] + self.k[2] * A[6][2] + self.k[3] * A[6][3] + self.k[4] * A[6][4] + self.k[5] * A[6][5])));
-        let mut y1 = SVector::<f64,D>::zeros();
-        let mut err = SVector::<f64,D>::zeros();
-        for i in 0..7 {
-            y1 += self.k[i] * B5[i];
-            err += self.k[i] * (B5[i] - B4[i]);
-        }
-        y1 *= h;
-        y1 += y0;
-        err *= h;
-        (y1,err)
-    }
-}
-
 impl<const D: usize> Solver<D> for DOPRI5Solver<D> {
     fn solve<F>(&mut self, ode: &F, y0: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
@@ -80,7 +83,7 @@ impl<const D: usize> Solver<D> for DOPRI5Solver<D> {
         points.push((t,y));
         self.k[0] = ode(t_start, y0);
         while t < t_end {
-            let res = self.step(&ode, &y, t, h);
+            let res = rk_step_impl(&C, &A, &B5, &B4, ode, t, &y, &(self.k[0].clone()), h, &mut self.k);
 
             // compute error
             let err_norm = scale_norm(&res.1,&y, self.atol, self.rtol);
@@ -100,3 +103,4 @@ impl<const D: usize> Solver<D> for DOPRI5Solver<D> {
         points
     }
 }
+*/

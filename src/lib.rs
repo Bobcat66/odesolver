@@ -4,3 +4,4 @@
 
 pub mod solvers;
 pub mod interpolation;
+pub mod algebra;
