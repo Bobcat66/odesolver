@@ -2,7 +2,7 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use odesolver::solvers::solver::Solver;
+use odesolver::solvers::solver::DenseSolver;
 use odesolver::solvers::runge_kutta::dopri5::DOPRI5Solver;
 use nalgebra::SVector;
 use std::fs::File;
@@ -23,18 +23,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut solver = DOPRI5Solver::<3>::default();
     let point = SVector::<f64,3>::new(1.0,1.0,1.0);
-    let points = solver.solve(&lorenz_system,&point,0.0,40.0);
-    for (time, point) in &points {
+    let res = solver.solve_dense(&lorenz_system,&point,0.0,40.0);
+    for (time, point) in &res.0 {
         println!("t: {}, point: {:?}", time, point);
     }
 
-    let file = File::create("lorenz.csv")?;
+    let file = File::create("lorenz2.csv")?;
     let mut w = BufWriter::new(file);
 
     writeln!(w, "t,x,y,z")?;
 
-    for (t, y) in points {
+    for (t, y) in &res.0 {
         writeln!(w, "{},{},{},{}", t, y[0], y[1], y[2])?;
     }
+
+    println!("{}",res.1.eval(20.0));
     Ok(())
 }

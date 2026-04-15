@@ -4,3 +4,4 @@
 pub mod runge_kutta;
 pub mod solver;
 pub mod dense;
+pub mod common;
