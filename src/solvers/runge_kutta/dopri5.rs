@@ -2,13 +2,15 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use crate::solvers::runge_kutta::rk_stepper::ButchersTableau;
-use crate::solvers::runge_kutta::adaptive_rk_solver::AdaptiveRKSolver;
-use crate::solvers::runge_kutta::adaptive_rk::ShampineConfig;
+use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, rk_method::RKMethod, rk_solver::RKSolver};
 
 pub struct DOPRI5 {}
 
-impl ButchersTableau<7,2> for DOPRI5 {
+impl RKMethod<7,2> for DOPRI5 {
+
+    type Controller = FirstOrderAdaptiveRKController<Self,7>;
+    type Interpolator = ShampineRKInterpolator<Self, 5, 7>;
+
     const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
     const A: [[f64; 7]; 7] = [
         [           0.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],
@@ -39,4 +41,4 @@ impl ShampineConfig<5,7> for DOPRI5 {
     ];
 }
 
-pub type DOPRI5Solver<const D: usize> = AdaptiveRKSolver<DOPRI5,7, 5, D>;
+pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5, 7, 2, D>;

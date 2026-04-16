@@ -30,6 +30,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut solver = DOPRI5Solver::<2>::default();
 
+    solver.cfg.rtol = 1e-8;
+    solver.cfg.atol = 1e-10;
+
     let point = SVector::<f64,2>::new(0.0,7.0);
     let points = solver.solve(&pendulum_ode, &point, 0.0, 30.0);
     for (time, point) in &points {

@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use nalgebra::SVector;
 
-use crate::solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{rk_controller::RKController, rk_dense::RKInterpolant, rk_interpolator::RKInterpolator, rk_stepper::ButchersTableau}};
+use crate::solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{rk_dense::RKInterpolant, rk_method::{RKController, RKInterpolator, RKMethod}}};
 
 // Controller
 pub struct AdaptiveRKConfig {
@@ -22,8 +22,8 @@ impl Default for AdaptiveRKConfig {
     fn default() -> Self 
     {
         Self {
-            atol: 1e-3,
-            rtol: 1e-6,
+            atol: 1e-6,
+            rtol: 1e-3,
             safety: 0.9,
             min_clamp: 1e-12,
             max_clamp: f64::MAX,
@@ -32,25 +32,25 @@ impl Default for AdaptiveRKConfig {
         }
     }
 }
-pub struct FirstOrderAdaptiveRKController<Tableau, const S: usize> 
-    where Tableau: ButchersTableau<S,2>
+pub struct FirstOrderAdaptiveRKController<Method, const S: usize> 
+    where Method: RKMethod<S,2>
 {
-    _marker: PhantomData<Tableau>
+    _marker: PhantomData<Method>
 }
 
-impl<Tableau, const S: usize> FirstOrderAdaptiveRKController<Tableau,S>
-    where Tableau: ButchersTableau<S,2>
+impl<Method, const S: usize> FirstOrderAdaptiveRKController<Method, S>
+    where Method: RKMethod<S,2>
 {
-    const ERROR_EXPONENT: f64 = {-1.0/(Tableau::ORDERS[1] as f64 + 1.0)};
+    const ERROR_EXPONENT: f64 = {-1.0/(Method::ORDERS[1] as f64 + 1.0)};
 }
 
-impl<Tableau, const S: usize> RKController<2> for FirstOrderAdaptiveRKController<Tableau, S>
-    where Tableau: ButchersTableau<S,2>
+impl<Method, const S: usize> RKController<2> for FirstOrderAdaptiveRKController<Method, S>
+    where Method: RKMethod<S,2>
 {
 
     type Config = AdaptiveRKConfig;
 
-    fn get_next_step<const D: usize>(o: &[SVector<f64,D>; 2], y0: &SVector<f64,D>, t1: f64, t0: f64, h: f64, t_end: f64, cfg: &AdaptiveRKConfig) -> (bool, f64)
+    fn get_next_step<const D: usize>(o: &[SVector<f64,D>; 2], y0: &SVector<f64,D>, t0: f64, h: f64, t_end: f64, cfg: &AdaptiveRKConfig) -> (bool, f64)
     {
         let y1 = o[0];
         let err = o[1];
@@ -67,16 +67,12 @@ impl<Tableau, const S: usize> RKController<2> for FirstOrderAdaptiveRKController
             new_h = h * cfg.min_factor;
         }
 
-        if t1 + new_h > t_end {
-            new_h = t_end - t1;
-        }
-
         (err_norm <= 1.0,new_h)
     }
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &AdaptiveRKConfig) -> f64
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Tableau::ORDERS[1])
+        select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Method::ORDERS[1])
     }
 }
 
@@ -94,8 +90,9 @@ pub struct ShampineRKInterpolator<Shampine, const P: usize, const S: usize>
 impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKInterpolator<Shampine, P, S>
     where Shampine: ShampineConfig<P,S>
 {
-    fn interpolate_dense<const D: usize>(steps: usize, points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D> 
+    fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D> 
     {
+        let steps = stages.len();
         let mut segments: Vec<(f64,Box<dyn DenseInterpolant<D>>)> = Vec::new();
         for i in 0..(steps-1) {
             segments.push(
@@ -105,6 +102,9 @@ impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKI
                 )
             );
         }
+
         DenseOutput::<D>::new(segments)
     }
 }
+
+

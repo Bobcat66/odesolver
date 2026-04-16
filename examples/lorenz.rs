@@ -22,13 +22,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut solver = DOPRI5Solver::<3>::default();
+    solver.cfg.rtol = 1e-8;
+    solver.cfg.atol = 1e-10;
     let point = SVector::<f64,3>::new(1.0,1.0,1.0);
-    let res = solver.solve_dense(&lorenz_system,&point,0.0,40.0);
+    let res = solver.solve_dense(&lorenz_system,&point,0.0,100.0);
     for (time, point) in &res.0 {
         println!("t: {}, point: {:?}", time, point);
     }
 
-    let file = File::create("lorenz2.csv")?;
+    let file = File::create("lorenz3.csv")?;
     let mut w = BufWriter::new(file);
 
     writeln!(w, "t,x,y,z")?;
@@ -37,6 +39,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(w, "{},{},{},{}", t, y[0], y[1], y[2])?;
     }
 
-    println!("{}",res.1.eval(20.0));
+    println!("{}",res.1.eval(10.0));
     Ok(())
 }

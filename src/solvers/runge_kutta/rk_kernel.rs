@@ -1,7 +1,7 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-
+/*
 use nalgebra::SVector;
 
 use crate::solvers::{common::{PointState, SolverState}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{const_config::{ButchersTableau, ExtendedButchersTableau}, rk_dense::RKInterpolant, rkimpl::{rk_stage_impl, rk_weight_impl}}};
@@ -97,3 +97,4 @@ pub trait RKKernel<T, Tableau, const S: usize, const D: usize>
         (state.points,dense)
     }
 }
+    */
