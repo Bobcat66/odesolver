@@ -41,7 +41,7 @@ pub struct FirstOrderAdaptiveRKController<Method, const S: usize>
 impl<Method, const S: usize> FirstOrderAdaptiveRKController<Method, S>
     where Method: RKMethod<S,2>
 {
-    const ERROR_EXPONENT: f64 = {-1.0/(Method::ORDERS[1] as f64 + 1.0)};
+    const ERROR_EXPONENT: f64 = {-1.0/(Method::ERR_ORDER as f64 + 1.0)};
 }
 
 impl<Method, const S: usize> RKController<2> for FirstOrderAdaptiveRKController<Method, S>
@@ -72,7 +72,7 @@ impl<Method, const S: usize> RKController<2> for FirstOrderAdaptiveRKController<
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &AdaptiveRKConfig) -> f64
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Method::ORDERS[1])
+        select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Method::ERR_ORDER)
     }
 }
 

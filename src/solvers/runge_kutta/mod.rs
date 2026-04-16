@@ -6,4 +6,5 @@ pub mod rk_dense;
 pub mod rk_stepper;
 pub mod adaptive_rk;
 pub mod rk_solver;
+pub mod dopri853;
 pub mod rk_method;

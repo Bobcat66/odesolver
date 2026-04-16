@@ -31,6 +31,7 @@ pub trait RKMethod<const S: usize, const O: usize> {
 
     const ORDERS: [usize; O]; // order of solutions
     const FSAL: bool;
+    const ERR_ORDER: usize; // order of error estimator
 }
 
 pub type MethodController<M,const S: usize, const O: usize> = <M as RKMethod<S,O>>::Controller;

@@ -27,6 +27,7 @@ impl RKMethod<7,2> for DOPRI5 {
     ];
     const FSAL: bool = true;
     const ORDERS: [usize; 2] = [5, 4];
+    const ERR_ORDER: usize = 4;
 }
 
 impl ShampineConfig<5,7> for DOPRI5 {
