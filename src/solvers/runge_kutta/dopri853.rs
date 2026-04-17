@@ -1,7 +1,7 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-
+/* 
 use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, rk_method::RKMethod, rk_solver::RKSolver};
 
 pub struct DOPRI853 {}
@@ -11,7 +11,7 @@ impl RKMethod<13,3> for DOPRI853 {
     type Controller = FirstOrderAdaptiveRKController<Self,13>;
     type Interpolator = ShampineRKInterpolator<Self, 8, 13>;
 
-    const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
+    const C: [f64; 13] = [0.0, 0.526001519587677318785587544488e-01, 0.789002279381515978178381316732e-01, 0.118350341907227396726757197510, 0.281649658092772603273242802490, 0.333333333333333333333333333333, 0.25, 0.307692307692307692307692307692, 0.651282051282051282051282051282, 0.6, 0.857142857142857142857142857142, 1.0, 1.0];
     const A: [[f64; 13]; 13] = [
         [                  0.0,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
         [ 5.260015195876773e-2,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
@@ -49,3 +49,4 @@ impl ShampineConfig<5,7> for DOPRI853 {
 }
 
 pub type DOPRI853Solver<const D: usize> = RKSolver<DOPRI853 ,13, 3, D>;
+*/

@@ -1,7 +1,7 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-use std::marker::PhantomData;
+use std::{f32::consts::E, marker::PhantomData};
 
 use nalgebra::SVector;
 
@@ -33,27 +33,26 @@ impl Default for AdaptiveRKConfig {
     }
 }
 pub struct FirstOrderAdaptiveRKController<Method, const S: usize> 
-    where Method: RKMethod<S,2>
+    where Method: RKMethod<S,1>
 {
     _marker: PhantomData<Method>
 }
 
 impl<Method, const S: usize> FirstOrderAdaptiveRKController<Method, S>
-    where Method: RKMethod<S,2>
+    where Method: RKMethod<S,1>
 {
     const ERROR_EXPONENT: f64 = {-1.0/(Method::ERR_ORDER as f64 + 1.0)};
 }
 
-impl<Method, const S: usize> RKController<2> for FirstOrderAdaptiveRKController<Method, S>
-    where Method: RKMethod<S,2>
+impl<Method, const S: usize> RKController<1> for FirstOrderAdaptiveRKController<Method, S>
+    where Method: RKMethod<S,1>
 {
 
     type Config = AdaptiveRKConfig;
 
-    fn get_next_step<const D: usize>(o: &[SVector<f64,D>; 2], y0: &SVector<f64,D>, t0: f64, h: f64, t_end: f64, cfg: &AdaptiveRKConfig) -> (bool, f64)
+    fn get_next_step<const D: usize>(y1: &SVector<f64, D>, e: &[SVector<f64,D>; 1], y0: &SVector<f64,D>, h: f64, cfg: &AdaptiveRKConfig) -> (bool, f64)
     {
-        let y1 = o[0];
-        let err = o[1];
+        let err = e[0];
         let scale = (y0.abs().sup(&(y1.abs())) * cfg.rtol).add_scalar(cfg.atol);
         let err_norm = norm(&err, &scale);
 
@@ -90,6 +89,9 @@ pub struct ShampineRKInterpolator<Shampine, const P: usize, const S: usize>
 impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKInterpolator<Shampine, P, S>
     where Shampine: ShampineConfig<P,S>
 {
+    fn interpolate_stage<const D: usize>(t0: f64, t1: f64, point: SVector<f64,D>, stage: [SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> {
+        Box::new(RKInterpolant::new(t0, t1, point, stage, Shampine::P))
+    }
     fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D> 
     {
         let steps = stages.len();
@@ -98,7 +100,7 @@ impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKI
             segments.push(
                 (
                     points[i].0,
-                    Box::new(RKInterpolant::new(points[i].0,points[i + 1].0, points[i].1, stages[i], Shampine::P))
+                    Self::interpolate_stage(points[i].0,points[i + 1].0, points[i].1, stages[i])
                 )
             );
         }

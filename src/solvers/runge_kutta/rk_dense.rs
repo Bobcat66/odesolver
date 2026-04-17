@@ -16,7 +16,7 @@ pub struct RKInterpolant<const S: usize, const P: usize, const D: usize> {
     b: [Polynomial<f64,P>; S]
 }
 
-impl<const S: usize, const P: usize, const D: usize> RKInterpolant<S,P,D>{
+impl<const S: usize, const P: usize, const D: usize> RKInterpolant<S,P,D> {
     fn eval_impl(&self, theta: f64) -> SVector<f64, D>
     {
         let mut y_theta = self.y0.clone();

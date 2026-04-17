@@ -6,7 +6,7 @@ use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, 
 
 pub struct DOPRI5 {}
 
-impl RKMethod<7,2> for DOPRI5 {
+impl RKMethod<7,1> for DOPRI5 {
 
     type Controller = FirstOrderAdaptiveRKController<Self,7>;
     type Interpolator = ShampineRKInterpolator<Self, 5, 7>;
@@ -21,12 +21,10 @@ impl RKMethod<7,2> for DOPRI5 {
         [ 9017.0/3168.0,     -355.0/33.0, 46732.0/5247.0,   49.0/176.0, -5103.0/18656.0,       0.0, 0.0],
         [    35.0/384.0,             0.0,   500.0/1113.0,  125.0/192.0,  -2187.0/6784.0, 11.0/84.0, 0.0]
     ];
-    const B: [[f64; 7]; 2] = [
-        [    35.0/384.0, 0.0,   500.0/1113.0, 125.0/192.0,    -2187.0/6784.0,    11.0/84.0,      0.0],
-        [5179.0/57600.0, 0.0, 7571.0/16695.0, 393.0/640.0, -92097.0/339200.0, 187.0/2100.0, 1.0/40.0]
-    ];
+    const B: [f64; 7] = [35.0/384.0, 0.0, 500.0/1113.0, 125.0/192.0, -2187.0/6784.0, 11.0/84.0, 0.0];
+    const E_B: [[f64; 7]; 1] = [[-71.0/57600.0, 0.0, 71.0/16695.0, -71.0/1920.0, 17253.0/339200.0, -22.0/525.0, 1.0/40.0]];
     const FSAL: bool = true;
-    const ORDERS: [usize; 2] = [5, 4];
+    const ORDER: usize = 5;
     const ERR_ORDER: usize = 4;
 }
 
@@ -42,4 +40,4 @@ impl ShampineConfig<5,7> for DOPRI5 {
     ];
 }
 
-pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5, 7, 2, D>;
+pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5, 7, 1, D>;

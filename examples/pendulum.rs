@@ -35,9 +35,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let point = SVector::<f64,2>::new(0.0,7.0);
     let points = solver.solve(&pendulum_ode, &point, 0.0, 30.0);
-    for (time, point) in &points {
-        println!("t: {}, point: {:?}", time, point);
-    }
     // This is a state-space representation of the pendulum, which decomposes the second-order ODE describing the dynamics of the system into a pair of first-order differential equations
     // One axis is the position of the pendulum (measured as an angle), the other axis is the velocity of the pendulum.
     // The dynamics of the system are represented as a vector field over the state space, which maps each point of the state space to a vector describing its derivative

@@ -4,36 +4,38 @@
 
 use nalgebra::SVector;
 
-use crate::solvers::dense::DenseOutput;
+use crate::solvers::dense::{DenseInterpolant, DenseOutput};
 
-pub trait RKController<const O: usize> {
+pub trait RKController<const E: usize> {
 
     type Config: Default;
     // returns the next timestep and whether or not the step should be accepted. o should be a buffer containing output, with y1 in o[0] and errors in o[1..n]
-    fn get_next_step<const D: usize>(o: &[SVector<f64,D>; O], y0: &SVector<f64,D>, t0: f64, h: f64, t_end: f64, cfg: &Self::Config) -> (bool, f64);
+    fn get_next_step<const D: usize>(y1: &SVector<f64, D>, e: &[SVector<f64,D>; E], y0: &SVector<f64,D>, h: f64, cfg: &Self::Config) -> (bool, f64);
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &Self::Config) -> f64
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }
 pub trait RKInterpolator<const S: usize> {
+    fn interpolate_stage<const D: usize>(t0: f64, t1: f64, point: SVector<f64,D>, stage: [SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>>;
     fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D>;
 }
 
-// S is number of stages, O is the number of solutions. B[0] is always the main solution, while B[1..n] are embedded solutions
-pub trait RKMethod<const S: usize, const O: usize> {
+// S is number of stages, E is the number of errors. B[0] is always the main solution, while B[1..n] are embedded solutions
+pub trait RKMethod<const S: usize, const E: usize> {
     
     type Interpolator: RKInterpolator<S>;
-    type Controller: RKController<O>;
+    type Controller: RKController<E>;
     
     // Butcher's tableau
     const C: [f64; S]; // time coefficients
     const A: [[f64; S]; S]; // stage coefficients
-    const B: [[f64; S]; O]; // weights
+    const B: [f64; S]; // weights
+    const E_B: [[f64; S]; E]; // error weights
 
-    const ORDERS: [usize; O]; // order of solutions
+    const ORDER: usize; // order of solution
     const FSAL: bool;
     const ERR_ORDER: usize; // order of error estimator
 }
 
-pub type MethodController<M,const S: usize, const O: usize> = <M as RKMethod<S,O>>::Controller;
-pub type MethodConfig<M,const S: usize, const O: usize> = <<M as RKMethod<S,O>>::Controller as RKController<O>>::Config;
-pub type MethodInterpolator<M,const S: usize, const O: usize> = <M as RKMethod<S,O>>::Interpolator;
+pub type MethodController<M,const S: usize, const E: usize> = <M as RKMethod<S,E>>::Controller;
+pub type MethodConfig<M,const S: usize, const E: usize> = <<M as RKMethod<S,E>>::Controller as RKController<E>>::Config;
+pub type MethodInterpolator<M,const S: usize, const E: usize> = <M as RKMethod<S,E>>::Interpolator;

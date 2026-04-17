@@ -4,7 +4,7 @@
 
 use std::marker::PhantomData;
 
-use nalgebra::SVector;
+use nalgebra::{SVector, zero};
 
 use crate::solvers::runge_kutta::rk_method::RKMethod;
 
@@ -14,39 +14,18 @@ pub struct RKStepper<Method, const S: usize, const O: usize>
     _marker: PhantomData<Method>
 }
 
-const fn compute_e<const S: usize, const O: usize>(b: [[f64; S]; O]) -> [[f64; S]; O] 
-{
-    let mut e = [[0.0; S]; O];
-    let mut i = 1;
-    while i < O {
-        let mut j = 0;
-        while j < S {
-            e[i][j] = b[0][j] - b[i][j];
-            j += 1;
-        }
-        i += 1;
-    }
-    e
-}
-
-impl<Method, const S: usize, const O: usize> RKStepper<Method,S,O>
-    where Method: RKMethod<S,O> 
-{
-    const E: [[f64; S]; O] = compute_e(Method::B);
-}
-
-impl<Method, const S: usize, const O: usize> RKStepper<Method, S, O> 
-    where Method: RKMethod<S,O> 
+impl<Method, const S: usize, const E: usize> RKStepper<Method, S, E> 
+    where Method: RKMethod<S,E> 
 {
     pub fn step<F, const D: usize>(
         k: &mut [SVector<f64,D>; S],
-        o: &mut [SVector<f64,D>; O],
+        e: &mut [SVector<f64,D>; E],
         ode: &F,
         t_n: f64,
         y_n: &SVector<f64,D>,
         f_n: &SVector<f64,D>,
         h: f64
-    ) -> ()
+    ) -> SVector<f64,D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
     {
         k[0] = *f_n;
@@ -58,16 +37,18 @@ impl<Method, const S: usize, const O: usize> RKStepper<Method, S, O>
             dy *= h;
             k[i] = ode(t_n + h * Method::C[i],&(y_n + dy));
         }
-        o.fill(SVector::zeros());
+        let mut o = SVector::<f64,D>::zeros();
+        e.fill(SVector::<f64, D>::zeros());
         for j in 0..S {
             let kj = k[j];
-            o[0] += kj * Method::B[0][j];
-            for i in 1..O {
-                o[i] += kj * Self::E[i][j] * h;
+            o += kj * Method::B[j];
+            for i in 0..E {
+                e[i] += kj * Method::E_B[i][j] * h;
             }
         }
-        o[0] *= h;
-        o[0] += y_n;
+        o *= h;
+        o += y_n;
+        o
     }
 }
 

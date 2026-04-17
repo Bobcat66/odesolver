@@ -18,7 +18,7 @@ const M1: f64 = 1.0; // Mass of the first pendulum bob, in kilograms
 const M2: f64 = 1.0; // Mass of the second pendulum bob, in kilograms
 
 const FPS: usize = 30;
-const SECONDS: usize = 15;
+const SECONDS: usize = 30;
 const TDELTA: f64 = 1.0 / FPS as f64;
 
 // Converts a state into a pair of cartesian coordinates, in the form (bob1,bob2). The origin is the origin of the pendulum, in cartesian coordinates

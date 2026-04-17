@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("t: {}, point: {:?}", time, point);
     }
 
-    let file = File::create("lorenz3.csv")?;
+    let file = File::create("lorenz.csv")?;
     let mut w = BufWriter::new(file);
 
     writeln!(w, "t,x,y,z")?;
