@@ -4,7 +4,7 @@
 
 use std::marker::PhantomData;
 
-use nalgebra::{SVector, zero};
+use nalgebra::SVector;
 
 use crate::solvers::runge_kutta::rk_method::RKMethod;
 
@@ -32,9 +32,8 @@ impl<Method, const S: usize, const E: usize> RKStepper<Method, S, E>
         for i in 1..S {
             let mut dy = SVector::<f64, D>::zeros();
             for j in 0..i {
-                dy += k[j] * Method::A[i][j];
+                dy += k[j] * Method::A[i][j] * h;
             }
-            dy *= h;
             k[i] = ode(t_n + h * Method::C[i],&(y_n + dy));
         }
         let mut o = SVector::<f64,D>::zeros();

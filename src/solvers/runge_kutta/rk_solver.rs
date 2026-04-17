@@ -96,7 +96,7 @@ impl<Method, const S: usize, const O: usize, const D: usize> DenseSolver<D> for 
         let mut stages: Vec<[SVector<f64,D>; S]> = Vec::new();
         let mut points: Vec<(f64,SVector<f64,D>)> = Vec::new();
         self.solve_impl(ode, y_start, t_start, t_end, &mut (|t,y| points.push((t,y))), &mut (|stage: &[SVector<f64,D>; S]| stages.push(*stage)));
-        let dense = MethodInterpolator::<Method,S,O>::interpolate_dense(&points, &stages);
+        let dense = MethodInterpolator::<Method,S,O>::interpolate_dense(ode, &points, &stages);
         (points,dense)
     }
 }

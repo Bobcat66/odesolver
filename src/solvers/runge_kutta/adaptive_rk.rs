@@ -143,23 +143,10 @@ pub struct ShampineRKInterpolator<Shampine, const P: usize, const S: usize>
 impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKInterpolator<Shampine, P, S>
     where Shampine: ShampineConfig<P,S>
 {
-    fn interpolate_stage<const D: usize>(t0: f64, t1: f64, point: SVector<f64,D>, stage: [SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> {
-        Box::new(ShampineInterpolant::new(t0, t1, point, stage, Shampine::P))
-    }
-    fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D> 
+    fn interpolate_stage<F,const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> 
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        let steps = stages.len();
-        let mut segments: Vec<(f64,Box<dyn DenseInterpolant<D>>)> = Vec::new();
-        for i in 0..(steps-1) {
-            segments.push(
-                (
-                    points[i].0,
-                    Self::interpolate_stage(points[i].0,points[i + 1].0, points[i].1, stages[i])
-                )
-            );
-        }
-
-        DenseOutput::<D>::new(segments)
+        Box::new(ShampineInterpolant::new(t0, t1, *y0, *stage, Shampine::P))
     }
 }
 

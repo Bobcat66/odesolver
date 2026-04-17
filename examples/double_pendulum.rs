@@ -2,6 +2,7 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
+use odesolver::solvers::runge_kutta::dopri853::DOPRI853Solver;
 use odesolver::solvers::solver::{DenseSolver, Solver};
 use odesolver::solvers::runge_kutta::dopri5::DOPRI5Solver;
 
@@ -95,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
     };
 
-    let mut solver = DOPRI5Solver::<4>::default();
+    let mut solver = DOPRI853Solver::<4>::default();
 
     solver.cfg.rtol = 1e-8;
     solver.cfg.atol = 1e-10;
@@ -115,7 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The dynamics of the system are represented as a vector field over the state space, which maps each point of the state space to a vector describing its derivative
 
     
-    let file = File::create("double_pendulum.csv")?;
+    let file = File::create("double_pendulum_dopri853.csv")?;
     let mut w = BufWriter::new(file);
 
     writeln!(w, "t,x1,y1,x2,y2,speed")?;

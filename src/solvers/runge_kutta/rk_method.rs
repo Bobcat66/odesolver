@@ -15,8 +15,24 @@ pub trait RKController<const E: usize> {
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }
 pub trait RKInterpolator<const S: usize> {
-    fn interpolate_stage<const D: usize>(t0: f64, t1: f64, point: SVector<f64,D>, stage: [SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>>;
-    fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D>;
+    fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>>
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+    fn interpolate_dense<F, const D: usize>(ode: &F, points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D>
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+    {
+        let steps = stages.len();
+        let mut segments: Vec<(f64,Box<dyn DenseInterpolant<D>>)> = Vec::new();
+        for i in 0..(steps-1) {
+            segments.push(
+                (
+                    points[i].0,
+                    Self::interpolate_stage(ode,points[i].0,points[i + 1].0, &points[i].1, &points[i+1].1, &stages[i])
+                )
+            );
+        }
+
+        DenseOutput::<D>::new(segments)
+    }
 }
 
 // S is number of stages, E is the number of errors. B[0] is always the main solution, while B[1..n] are embedded solutions

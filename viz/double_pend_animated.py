@@ -1,6 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv("double_pendulum.csv")
+df = pd.read_csv("double_pendulum_dopri853.csv")
 
 t = df["t"].to_numpy()
 x1 = df["x1"].to_numpy()
@@ -67,4 +67,4 @@ ani = FuncAnimation(
 
 plt.show()
 
-ani.save("double_pendulum.mp4", writer="ffmpeg", fps=30, dpi=200)
+ani.save("double_pendulum_dopri853.mp4", writer="ffmpeg", fps=30, dpi=200)
