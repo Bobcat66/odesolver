@@ -2,7 +2,6 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 pub mod dopri5;
-pub mod rk_dense;
 pub mod rk_stepper;
 pub mod adaptive_rk;
 pub mod rk_solver;

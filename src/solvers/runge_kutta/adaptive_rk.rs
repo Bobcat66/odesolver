@@ -5,15 +5,15 @@ use std::{f32::consts::E, marker::PhantomData};
 
 use nalgebra::SVector;
 
-use crate::solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{rk_dense::RKInterpolant, rk_method::{RKController, RKInterpolator, RKMethod}}};
+use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::rk_method::{RKController, RKInterpolator, RKMethod}}};
 
 // Controller
 pub struct AdaptiveRKConfig {
     pub atol: f64, // absolute tolerance
     pub rtol: f64, // normalized tolerance
     pub safety: f64, // safety value to reduce overshoot
-    pub min_clamp: f64, // minimum timestep clamp
-    pub max_clamp: f64, // maximum timestep clamp
+    pub min_step: f64, // minimum timestep clamp
+    pub max_step: f64, // maximum timestep clamp
     pub min_factor: f64, // minimum timestep change factor
     pub max_factor: f64, // maximum timestep change factor
 }
@@ -25,13 +25,27 @@ impl Default for AdaptiveRKConfig {
             atol: 1e-6,
             rtol: 1e-3,
             safety: 0.9,
-            min_clamp: 1e-12,
-            max_clamp: f64::MAX,
+            min_step: 1e-12,
+            max_step: f64::MAX,
             min_factor: 0.2,
             max_factor: 10.0
         }
     }
 }
+
+pub fn compute_new_h(err_norm: f64, h: f64, safety: f64, max_step: f64, min_step: f64, max_factor: f64, min_factor: f64, error_exponent: f64) -> f64
+{
+    let mut new_h = (h * safety * err_norm.powf(error_exponent)).clamp(min_step,max_step);
+    let factor = new_h/h;
+
+    if factor > max_factor {
+        new_h = h * max_factor;
+    } else if factor < min_factor {
+        new_h = h * min_factor;
+    }
+    new_h
+}
+
 pub struct FirstOrderAdaptiveRKController<Method, const S: usize> 
     where Method: RKMethod<S,1>
 {
@@ -56,17 +70,7 @@ impl<Method, const S: usize> RKController<1> for FirstOrderAdaptiveRKController<
         let scale = (y0.abs().sup(&(y1.abs())) * cfg.rtol).add_scalar(cfg.atol);
         let err_norm = norm(&err, &scale);
 
-        // recalculate stepsize
-        let mut new_h = (h * cfg.safety * err_norm.powf(Self::ERROR_EXPONENT)).clamp(cfg.min_clamp,cfg.max_clamp);
-        let factor = new_h/h;
-
-        if factor > cfg.max_factor {
-            new_h = h * cfg.max_factor;
-        } else if factor < cfg.min_factor {
-            new_h = h * cfg.min_factor;
-        }
-
-        (err_norm <= 1.0,new_h)
+        (err_norm <= 1.0,compute_new_h(err_norm, h, cfg.safety, cfg.max_step, cfg.min_step, cfg.max_factor, cfg.min_factor, Self::ERROR_EXPONENT))
     }
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &AdaptiveRKConfig) -> f64
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
@@ -76,6 +80,56 @@ impl<Method, const S: usize> RKController<1> for FirstOrderAdaptiveRKController<
 }
 
 // Interpolator
+
+pub struct ShampineInterpolant<const S: usize, const P: usize, const D: usize> {
+    t0: f64,
+    t1: f64,
+    h: f64,
+    y0: SVector<f64, D>,
+    k: [SVector<f64,D>; S],
+    b: [Polynomial<f64,P>; S]
+}
+
+impl<const S: usize, const P: usize, const D: usize> ShampineInterpolant<S,P,D> {
+    fn eval_impl(&self, theta: f64) -> SVector<f64, D>
+    {
+        let mut y_theta = self.y0.clone();
+        for i in 0..S {
+            y_theta += self.h * self.b[i].eval(theta) * self.k[i];
+        }
+        y_theta
+    }
+
+    fn get_theta(&self, t: f64) -> f64 {
+        (t-self.t0)/self.h
+    }
+
+    pub fn new(t0: f64, t1: f64, y0: SVector<f64,D>, k: [SVector<f64,D>; S], p: [[f64; P]; S]) -> Self {
+        Self {
+            t0: t0,
+            t1: t1,
+            h: t1 - t0,
+            y0: y0,
+            k: k,
+            b: std::array::from_fn(|i| Polynomial { a: p[i] })
+        }
+    }
+}
+
+impl<const S: usize, const P: usize, const D: usize> DenseInterpolant<D> for ShampineInterpolant<S, P, D> {
+    fn eval(&self, t: f64) -> SVector<f64,D> {
+        self.eval_impl(self.get_theta(t))
+    }
+    fn low_t(&self) -> f64 {
+        self.t0
+    }
+    fn high_t(&self) -> f64 {
+        self.t1
+    }
+    fn y0(&self) -> SVector<f64,D> {
+        self.y0
+    }
+}
 pub trait ShampineConfig<const P: usize, const S: usize> {
     const P: [[f64; P]; S]; // shampine polynomial weights
 }
@@ -90,7 +144,7 @@ impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKI
     where Shampine: ShampineConfig<P,S>
 {
     fn interpolate_stage<const D: usize>(t0: f64, t1: f64, point: SVector<f64,D>, stage: [SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> {
-        Box::new(RKInterpolant::new(t0, t1, point, stage, Shampine::P))
+        Box::new(ShampineInterpolant::new(t0, t1, point, stage, Shampine::P))
     }
     fn interpolate_dense<const D: usize>(points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D> 
     {
