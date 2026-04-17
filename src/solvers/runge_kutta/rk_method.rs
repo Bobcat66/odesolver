@@ -8,7 +8,7 @@ use crate::solvers::dense::{DenseInterpolant, DenseOutput};
 
 pub trait RKController<const E: usize> {
 
-    type Config: Default;
+    type Config: Default + Copy;
     // returns the next timestep and whether or not the step should be accepted. o should be a buffer containing output, with y1 in o[0] and errors in o[1..n]
     fn get_next_step<const D: usize>(y1: &SVector<f64, D>, e: &[SVector<f64,D>; E], y0: &SVector<f64,D>, h: f64, cfg: &Self::Config) -> (bool, f64);
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &Self::Config) -> f64
@@ -21,11 +21,10 @@ pub trait RKInterpolator<const S: usize> {
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let steps = stages.len();
-        let mut segments: Vec<(f64,Box<dyn DenseInterpolant<D>>)> = Vec::new();
+        let mut segments: Vec<(Box<dyn DenseInterpolant<D>>)> = Vec::new();
         for i in 0..(steps-1) {
             segments.push(
                 (
-                    points[i].0,
                     Self::interpolate_stage(ode,points[i].0,points[i + 1].0, &points[i].1, &points[i+1].1, &stages[i])
                 )
             );

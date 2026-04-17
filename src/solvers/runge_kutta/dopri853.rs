@@ -60,6 +60,7 @@ pub struct DOPRI853Interpolant<const D: usize> {
     t1: f64,
     h: f64,
     y0: SVector<f64, D>,
+    y1: SVector<f64, D>,
     r: [SVector<f64,D>; 7]
 }
 
@@ -85,12 +86,13 @@ impl<const D: usize> DOPRI853Interpolant<D> {
         (t-self.t0)/self.h
     }
 
-    pub fn new(t0: f64, t1: f64, y0: SVector<f64,D>, r: [SVector<f64,D>; 7]) -> Self {
+    pub fn new(t0: f64, t1: f64, y0: SVector<f64,D>, y1: SVector<f64, D>, r: [SVector<f64,D>; 7]) -> Self {
         Self {
             t0: t0,
             t1: t1,
             h: t1 - t0,
             y0: y0,
+            y1: y1,
             r: r
         }
     }
@@ -108,6 +110,9 @@ impl<const D: usize> DenseInterpolant<D> for DOPRI853Interpolant<D> {
     }
     fn y0(&self) -> SVector<f64,D> {
         self.y0
+    }
+    fn y1(&self) -> SVector<f64,D> {
+        self.y1
     }
 }
 
@@ -222,7 +227,7 @@ impl RKInterpolator<13> for DOPRI853Interpolator
                 r[i] += k[j] * h * DENSE[i - 3][j];
             }
         }
-        Box::new(DOPRI853Interpolant::new(t0, t1, *y0, r))
+        Box::new(DOPRI853Interpolant::new(t0, t1, *y0, *y1, r))
     }
 }
 // Method

@@ -8,6 +8,7 @@ use nalgebra::SVector;
 use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::rk_method::{RKController, RKInterpolator, RKMethod}}};
 
 // Controller
+#[derive(Copy, Clone)]
 pub struct AdaptiveRKConfig {
     pub atol: f64, // absolute tolerance
     pub rtol: f64, // normalized tolerance
@@ -86,8 +87,9 @@ pub struct ShampineInterpolant<const S: usize, const P: usize, const D: usize> {
     t1: f64,
     h: f64,
     y0: SVector<f64, D>,
-    k: [SVector<f64,D>; S],
-    b: [Polynomial<f64,P>; S]
+    y1: SVector<f64, D>,
+    k: [SVector<f64, D>; S],
+    b: [Polynomial<f64, P>; S]
 }
 
 impl<const S: usize, const P: usize, const D: usize> ShampineInterpolant<S,P,D> {
@@ -104,12 +106,13 @@ impl<const S: usize, const P: usize, const D: usize> ShampineInterpolant<S,P,D> 
         (t-self.t0)/self.h
     }
 
-    pub fn new(t0: f64, t1: f64, y0: SVector<f64,D>, k: [SVector<f64,D>; S], p: [[f64; P]; S]) -> Self {
+    pub fn new(t0: f64, t1: f64, y0: SVector<f64,D>, y1: SVector<f64,D>, k: [SVector<f64,D>; S], p: [[f64; P]; S]) -> Self {
         Self {
             t0: t0,
             t1: t1,
             h: t1 - t0,
             y0: y0,
+            y1: y1,
             k: k,
             b: std::array::from_fn(|i| Polynomial { a: p[i] })
         }
@@ -117,17 +120,25 @@ impl<const S: usize, const P: usize, const D: usize> ShampineInterpolant<S,P,D> 
 }
 
 impl<const S: usize, const P: usize, const D: usize> DenseInterpolant<D> for ShampineInterpolant<S, P, D> {
-    fn eval(&self, t: f64) -> SVector<f64,D> {
+    fn eval(&self, t: f64) -> SVector<f64,D>
+    {
         self.eval_impl(self.get_theta(t))
     }
-    fn low_t(&self) -> f64 {
+    fn low_t(&self) -> f64
+    {
         self.t0
     }
-    fn high_t(&self) -> f64 {
+    fn high_t(&self) -> f64
+    {
         self.t1
     }
-    fn y0(&self) -> SVector<f64,D> {
+    fn y0(&self) -> SVector<f64,D>
+    {
         self.y0
+    }
+    fn y1(&self) -> SVector<f64,D>
+    {
+        self.y1
     }
 }
 pub trait ShampineConfig<const P: usize, const S: usize> {
@@ -146,7 +157,7 @@ impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKI
     fn interpolate_stage<F,const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        Box::new(ShampineInterpolant::new(t0, t1, *y0, *stage, Shampine::P))
+        Box::new(ShampineInterpolant::new(t0, t1, *y0, *y1,*stage, Shampine::P))
     }
 }
 

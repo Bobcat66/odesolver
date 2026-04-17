@@ -4,16 +4,31 @@
 use nalgebra::SVector;
 use std::vec::Vec;
 use crate::solvers::dense::{DenseInterpolant, DenseOutput};
-pub trait Solver<const D: usize> {
+
+pub trait LazySolution<const D: usize>
+{
+    fn next(&mut self) -> (f64, SVector<f64,D>);
+}
+
+pub trait LazyDenseSolution<const D: usize>
+{
+    fn next(&mut self) -> Box<dyn DenseInterpolant<D>>;
+}
+pub trait Solver<const D: usize>
+{
     // Returns a vector of all points sampled during computation, stored in tuples form (time, state)
     fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
-    fn solve_stream<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, point_consumer: &mut C) -> ()
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
-        C: FnMut(f64,SVector<f64,D>) -> ();
+
+    fn solve_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }
 
-pub trait DenseSolver<const D: usize> : Solver<D> {
+pub trait DenseSolver<const D: usize> : Solver<D>
+{
     fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<D>)
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+
+    fn solve_dense_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }
