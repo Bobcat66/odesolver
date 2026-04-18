@@ -206,7 +206,8 @@ pub struct DOPRI853Interpolator {}
 
 impl RKInterpolator<13> for DOPRI853Interpolator
 {
-    fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; 13]) -> Box<dyn DenseInterpolant<D>> 
+    type InterpolantType<const D: usize> = DOPRI853Interpolant<D>;
+    fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; 13]) -> Self::InterpolantType<D> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let mut k: [SVector<f64, D>; 16] = [SVector::<f64, D>::zeros(); 16];
@@ -229,7 +230,7 @@ impl RKInterpolator<13> for DOPRI853Interpolator
                 r[i] += k[j] * h * DENSE[i - 3][j];
             }
         }
-        Box::new(DOPRI853Interpolant::new(t0, t1, *y0, *y1, r))
+        DOPRI853Interpolant::new(t0, t1, *y0, *y1, r)
     }
 }
 // Method

@@ -15,20 +15,23 @@ pub trait RKController<const E: usize> {
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }
 pub trait RKInterpolator<const S: usize> {
-    fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>>
+
+    type InterpolantType<const D: usize>: DenseInterpolant<D>;
+
+    fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Self::InterpolantType<D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
-    fn interpolate_dense<F, const D: usize>(ode: &F, points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<D>
+    fn interpolate_dense<F, const D: usize>(ode: &F, points: &Vec<(f64,SVector<f64,D>)>, stages: &Vec<[SVector<f64,D>; S]>) -> DenseOutput<Self::InterpolantType<D>,D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let steps = stages.len();
-        let mut segments: Vec<Box<dyn DenseInterpolant<D>>> = Vec::new();
+        let mut segments: Vec<Self::InterpolantType<D>> = Vec::new();
         for i in 0..(steps-1) {
             segments.push(
                 Self::interpolate_stage(ode,points[i].0,points[i + 1].0, &points[i].1, &points[i+1].1, &stages[i])
             );
         }
 
-        DenseOutput::<D>::new(segments)
+        DenseOutput::<Self::InterpolantType<D>,D>::new(segments)
     }
 }
 
@@ -52,3 +55,4 @@ pub trait RKMethod<const S: usize, const E: usize> {
 pub type MethodController<M,const S: usize, const E: usize> = <M as RKMethod<S,E>>::Controller;
 pub type MethodConfig<M,const S: usize, const E: usize> = <<M as RKMethod<S,E>>::Controller as RKController<E>>::Config;
 pub type MethodInterpolator<M,const S: usize, const E: usize> = <M as RKMethod<S,E>>::Interpolator;
+pub type MethodInterpolant<M,const S: usize, const E: usize, const D: usize> = <<M as RKMethod<S,E>>::Interpolator as RKInterpolator<S>>::InterpolantType<D>;

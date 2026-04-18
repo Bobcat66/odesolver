@@ -11,12 +11,16 @@ pub trait DenseInterpolant<const D: usize> {
     fn y1(&self) -> SVector<f64,D>;
 }
 
-pub struct DenseOutput<const D: usize> {
-    segments: Vec<(Box<dyn DenseInterpolant<D>>)>
+pub struct DenseOutput<T, const D: usize> 
+    where T: DenseInterpolant<D>
+{
+    segments: Vec<T>
 }
 
-impl<const D: usize> DenseOutput<D> {
-    pub fn new(segments: Vec<(Box<dyn DenseInterpolant<D>>)>) -> Self {
+impl<T, const D: usize> DenseOutput<T, D>
+    where T: DenseInterpolant<D>
+{
+    pub fn new(segments: Vec<T>) -> Self {
         Self {segments: segments}
     }
     

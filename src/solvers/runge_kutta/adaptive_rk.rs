@@ -154,10 +154,11 @@ pub struct ShampineRKInterpolator<Shampine, const P: usize, const S: usize>
 impl<Shampine, const P: usize, const S: usize> RKInterpolator<S> for ShampineRKInterpolator<Shampine, P, S>
     where Shampine: ShampineConfig<P,S>
 {
-    fn interpolate_stage<F,const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Box<dyn DenseInterpolant<D>> 
+    type InterpolantType<const D: usize> = ShampineInterpolant<S,P,D>;
+    fn interpolate_stage<F,const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; S]) -> Self::InterpolantType<D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        Box::new(ShampineInterpolant::new(t0, t1, *y0, *y1,*stage, Shampine::P))
+        ShampineInterpolant::new(t0, t1, *y0, *y1,*stage, Shampine::P)
     }
 }
 
