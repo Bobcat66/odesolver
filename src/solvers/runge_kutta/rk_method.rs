@@ -21,12 +21,10 @@ pub trait RKInterpolator<const S: usize> {
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let steps = stages.len();
-        let mut segments: Vec<(Box<dyn DenseInterpolant<D>>)> = Vec::new();
+        let mut segments: Vec<Box<dyn DenseInterpolant<D>>> = Vec::new();
         for i in 0..(steps-1) {
             segments.push(
-                (
-                    Self::interpolate_stage(ode,points[i].0,points[i + 1].0, &points[i].1, &points[i+1].1, &stages[i])
-                )
+                Self::interpolate_stage(ode,points[i].0,points[i + 1].0, &points[i].1, &points[i+1].1, &stages[i])
             );
         }
 

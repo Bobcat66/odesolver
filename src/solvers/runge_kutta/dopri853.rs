@@ -2,6 +2,8 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
+// This is an implementation of Hairer's DOPRI8(5,3) method, first implemented in Fortran here: https://www.unige.ch/~hairer/prog/nonstiff/dop853.f
+
 use std::marker::PhantomData;
 
 use nalgebra::SVector;

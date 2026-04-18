@@ -80,7 +80,7 @@ impl<Method, const S: usize> RKController<1> for FirstOrderAdaptiveRKController<
     }
 }
 
-// Interpolator
+// Interpolator. This is based on Shampine's method for deriving polynomial interpolants
 
 pub struct ShampineInterpolant<const S: usize, const P: usize, const D: usize> {
     t0: f64,

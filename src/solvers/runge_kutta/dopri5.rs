@@ -2,6 +2,8 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
+// This is an implementation of the original Dormand-Prince method
+
 use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, rk_method::RKMethod, rk_solver::RKSolver};
 
 pub struct DOPRI5 {}
