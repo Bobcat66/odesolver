@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     solver.cfg.atol = 1e-10;
 
     let point = SVector::<f64,4>::new(PI/2.0,PI/2.0,0.0,0.0);
-    let result = solver.solve_dense(&double_pendulum_ode, &point, 0.0, SECONDS as f64);
+    let result = solver.solve_dense(&double_pendulum_ode, &point, 0.0, SECONDS as f64, false);
 
     let interpolator = result.1;
     let mut interp_points = Vec::<(f64,SVector<f64,4>)>::new();

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     solver.cfg.rtol = 1e-8;
     solver.cfg.atol = 1e-10;
     let point = SVector::<f64,3>::new(1.0,1.0,1.0);
-    let res = solver.solve_dense(&lorenz_system,&point,0.0,100.0);
+    let res = solver.solve_dense(&lorenz_system,&point,0.0,100.0, false);
     for (time, point) in &res.0 {
         println!("t: {}, point: {:?}", time, point);
     }

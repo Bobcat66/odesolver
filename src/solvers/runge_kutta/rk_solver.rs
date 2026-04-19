@@ -147,7 +147,7 @@ impl<Method, const S: usize, const E: usize, const D: usize> RKSolver<Method,S,E
     }
 
     // Returns (steps,Vec(t,y))
-    fn solve_impl<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, stage_consumer: &mut C) -> Vec<(f64,SVector<f64,D>)>
+    fn solve_impl<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, stage_consumer: &mut C, verbose: bool) -> Vec<(f64,SVector<f64,D>)>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>,
         C: FnMut(&[SVector<f64,D>; S]) -> ()
     {
@@ -164,7 +164,13 @@ impl<Method, const S: usize, const E: usize, const D: usize> RKSolver<Method,S,E
         while t < t_end {
             h = (t_end - t).min(h);
             let new_t = t + h;
+            if verbose {
+                println!("t={}, h={}, evaluating at t={}",t,h,new_t);
+            }
             let res = RKStepper::<Method,S,E>::step(k, e, ode, t, &y, &f, h);
+            if verbose {
+                println!("y(t)={:?}",res)
+            }
             let time_control = MethodController::<Method,S,E>::get_next_step(&res,e, &y, h, cfg);
             if time_control.0 {
                 y = res;
@@ -174,6 +180,9 @@ impl<Method, const S: usize, const E: usize, const D: usize> RKSolver<Method,S,E
                 stage_consumer(k);
             }
             h = time_control.1;
+            if verbose {
+                println!("{}",if time_control.0 {"ACCEPTED"} else {"REJECTED"})
+            }
         }
         points
     }
@@ -190,10 +199,10 @@ impl<Method, const S: usize, const E: usize, const D: usize> Default for RKSolve
 impl<Method, const S: usize, const E: usize, const D: usize> Solver<D> for RKSolver<Method,S,E,D>
     where Method: RKMethod<S,E>,
 {
-    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
+    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SVector<f64,D>)> 
             where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
-        self.solve_impl(ode, y_start, t_start, t_end, &mut (|_stage: &[SVector<f64,D>; S]| ()))
+        self.solve_impl(ode, y_start, t_start, t_end, &mut (|_stage: &[SVector<f64,D>; S]| ()), verbose)
     }
     fn solve_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
             where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D> 
@@ -206,11 +215,11 @@ impl<Method, const S: usize, const E: usize, const D: usize> DenseSolver<D> for 
     where Method: RKMethod<S,E>
 {
     type InterpolantType = MethodInterpolant<Method,S,E,D>;
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType,D>) 
+    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType,D>) 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let mut stages: Vec<[SVector<f64,D>; S]> = Vec::new();
-        let points = self.solve_impl(ode, y_start, t_start, t_end, &mut (|stage: &[SVector<f64,D>; S]| stages.push(*stage)));
+        let points = self.solve_impl(ode, y_start, t_start, t_end, &mut (|stage: &[SVector<f64,D>; S]| stages.push(*stage)), verbose);
         let dense = MethodInterpolator::<Method,S,E>::interpolate_dense(ode, &points, &stages);
         (points,dense)
     }

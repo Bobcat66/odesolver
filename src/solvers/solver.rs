@@ -18,7 +18,7 @@ pub trait LazyDenseSolution<T, const D: usize>
 pub trait Solver<const D: usize>
 {
     // Returns a vector of all points sampled during computation, stored in tuples form (time, state)
-    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
+    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SVector<f64,D>)> 
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 
     fn solve_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
@@ -29,9 +29,18 @@ pub trait DenseSolver<const D: usize> : Solver<D>
 {
     type InterpolantType: DenseInterpolant<{D}>;
 
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType, D>)
+    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType, D>)
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 
     fn solve_dense_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType,D>
+        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+}
+
+pub trait SymplecticSolver<const D: usize> : Solver<D>
+{
+    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64) -> Vec<(f64,SVector<f64,D>)> 
+        where F: Fn(f64,&SVector<f64,D>,&SVector<f64,D>) -> (SVector<f64,D>,SVector<f64,D>);
+
+    fn solve_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
 }

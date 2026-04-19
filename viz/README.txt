@@ -1,0 +1,1 @@
+Most of ts is AI slop because I cant be arsed to write a proper visualizer. 
