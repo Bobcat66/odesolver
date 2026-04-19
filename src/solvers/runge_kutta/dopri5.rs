@@ -41,5 +41,3 @@ impl ShampineConfig<5,7> for DOPRI5 {
         [0.0, 0.0,        40617522.0/29380423.0,       -110615467.0/29380423.0,         69997945.0/29380423.0]
     ];
 }
-
-pub type DOPRI5Solver<const D: usize> = RKSolver<DOPRI5, 7, 1, D>;

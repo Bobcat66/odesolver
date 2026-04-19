@@ -6,7 +6,7 @@ use std::{f64::consts::PI, fs::File};
 use std::io::{BufWriter, Write};
 
 use nalgebra::SVector;
-use odesolver::solvers::{runge_kutta::{dopri5::DOPRI5Solver, dopri853::{DOPRI853, DOPRI853Solver}}, solver::DenseSolver};
+use odesolver::solvers::{{runge_kutta::{DOPRI5Solver,DOPRI853Solver}},DenseSolver};
 
 const G: f64 = 4.0 * PI * PI; // units are in solar masses, years, and astronomical units
 const M1: f64 = 1.0;

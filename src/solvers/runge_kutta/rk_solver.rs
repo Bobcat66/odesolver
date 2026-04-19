@@ -6,7 +6,7 @@ use std::default::Default;
 
 use nalgebra::SVector;
 
-use crate::solvers::{dense::{DenseInterpolant, DenseOutput}, runge_kutta::{rk_method::{MethodConfig, MethodController, MethodInterpolator, MethodInterpolant, RKController, RKInterpolator, RKMethod}, rk_stepper::RKStepper}, solver::{DenseSolver, LazyDenseSolution, LazySolution, Solver}};
+use crate::solvers::{DenseOutput, DenseSolver, LazyDenseSolution, LazySolution, Solver, runge_kutta::{rk_method::{MethodConfig, MethodController, MethodInterpolant, MethodInterpolator, RKController, RKInterpolator, RKMethod}, rk_stepper::RKStepper}};
 
 // Lazy solutions
 pub struct RKLazySolution<F, Method, const S: usize, const E: usize, const D: usize> 
@@ -204,7 +204,7 @@ impl<Method, const S: usize, const E: usize, const D: usize> Solver<D> for RKSol
     {
         self.solve_impl(ode, y_start, t_start, t_end, &mut (|_stage: &[SVector<f64,D>; S]| ()), verbose)
     }
-    fn solve_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
+    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
             where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D> 
     {
         RKLazySolution::<_,Method, S, E, D>::new(self.cfg, ode, t_start, *y_start, ode(t_start, y_start))
@@ -215,7 +215,7 @@ impl<Method, const S: usize, const E: usize, const D: usize> DenseSolver<D> for 
     where Method: RKMethod<S,E>
 {
     type InterpolantType = MethodInterpolant<Method,S,E,D>;
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType,D>) 
+    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType,D>)
         where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
     {
         let mut stages: Vec<[SVector<f64,D>; S]> = Vec::new();
@@ -223,7 +223,7 @@ impl<Method, const S: usize, const E: usize, const D: usize> DenseSolver<D> for 
         let dense = MethodInterpolator::<Method,S,E>::interpolate_dense(ode, &points, &stages);
         (points,dense)
     }
-    fn solve_dense_lazy<F,C>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType, D>
+    fn solve_dense_lazy<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType, D>
             where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D> 
     {
         RKLazyDenseSolution::<_,Method, S, E, D>::new(self.cfg, ode, t_start, *y_start, ode(t_start, y_start))

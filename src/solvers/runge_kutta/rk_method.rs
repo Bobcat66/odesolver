@@ -4,7 +4,7 @@
 
 use nalgebra::SVector;
 
-use crate::solvers::dense::{DenseInterpolant, DenseOutput};
+use crate::solvers::{DenseInterpolant, DenseOutput};
 
 pub trait RKController<const E: usize> {
 

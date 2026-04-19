@@ -5,7 +5,7 @@ use std::{f32::consts::E, marker::PhantomData};
 
 use nalgebra::SVector;
 
-use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::rk_method::{RKController, RKInterpolator, RKMethod}}};
+use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, solvers::{DenseInterpolant, common::{norm, select_initial_timestep}, runge_kutta::rk_method::{RKController, RKInterpolator, RKMethod}}};
 
 // Controller
 #[derive(Copy, Clone)]

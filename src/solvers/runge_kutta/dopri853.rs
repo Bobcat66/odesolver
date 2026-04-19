@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use nalgebra::SVector;
 
-use crate::solvers::{common::{norm, select_initial_timestep}, dense::{DenseInterpolant, DenseOutput}, runge_kutta::{adaptive_rk::{AdaptiveRKConfig, FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator, compute_new_h}, rk_method::{RKController, RKInterpolator, RKMethod}, rk_solver::RKSolver}};
+use crate::solvers::{DenseInterpolant, common::{norm, select_initial_timestep}, runge_kutta::{adaptive_rk::{AdaptiveRKConfig, FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator, compute_new_h}, rk_method::{RKController, RKInterpolator, RKMethod}, rk_solver::RKSolver}};
 
 pub struct DOPRI853 {}
 
@@ -268,6 +268,4 @@ impl RKMethod<13,2> for DOPRI853 {
     const ORDER: usize = 8;
     const ERR_ORDER: usize = 7;
 }
-
-pub type DOPRI853Solver<const D: usize> = RKSolver<DOPRI853 ,13, 2, D>;
 

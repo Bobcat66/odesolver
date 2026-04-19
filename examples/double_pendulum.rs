@@ -2,9 +2,9 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use odesolver::solvers::runge_kutta::dopri853::DOPRI853Solver;
-use odesolver::solvers::solver::{DenseSolver, Solver};
-use odesolver::solvers::runge_kutta::dopri5::DOPRI5Solver;
+use odesolver::solvers::runge_kutta::DOPRI853Solver;
+use odesolver::solvers::{DenseSolver, Solver};
+use odesolver::solvers::runge_kutta::DOPRI5Solver;
 
 use nalgebra::SVector;
 
