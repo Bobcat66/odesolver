@@ -58,7 +58,8 @@ impl<const D: usize> LinearInterpolant<D> {
         self.y0 + (self.dy * theta)
     }
 
-    fn get_theta(&self, t: f64) -> f64 {
+    fn get_theta(&self, t: f64) -> f64
+    {
         (t-self.t0)/self.h
     }
 
