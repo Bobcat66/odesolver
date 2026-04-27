@@ -1,15 +1,15 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-
+/* 
 use std::marker::PhantomData;
 
 use nalgebra::SVector;
 
 use crate::solvers::runge_kutta::rk_method::RKMethod;
 
-pub struct RKStepper<Method, const S: usize, const O: usize> 
-    where Method: RKMethod<S,O> 
+pub struct RKStepper<Method, const S: usize, const E: usize> 
+    where Method: RKMethod<S,E> 
 {
     _marker: PhantomData<Method>
 }
@@ -51,3 +51,4 @@ impl<Method, const S: usize, const E: usize> RKStepper<Method, S, E>
     }
 }
 
+*/

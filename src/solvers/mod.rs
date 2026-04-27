@@ -2,40 +2,35 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use nalgebra::SVector;
+use nalgebra::SMatrix;
 use std::vec::Vec;
 
 pub mod runge_kutta;
 pub mod common;
 
+// We use matrices to allow for solving partitioned ODEs
+
 // Dense Solutions
-pub trait DenseInterpolant<const D: usize> {
-    fn eval(&self, t: f64) -> SVector<f64,D>;
+
+pub trait DenseInterpolant<const P: usize, const D: usize>
+{
+    fn eval(&self, t: f64) -> SMatrix<f64,D,P>;
     fn low_t(&self) -> f64;
     fn high_t(&self) -> f64;
-    fn y0(&self) -> SVector<f64,D>;
-    fn y1(&self) -> SVector<f64,D>;
+    fn y0(&self) -> SMatrix<f64,D,P>;
+    fn y1(&self) -> SMatrix<f64,D,P>;
 }
 
-pub trait DensePartitionedInterpolant<const C: usize, const D: usize>
+pub struct DenseOutput<I, const P: usize, const D: usize> 
+    where I: DenseInterpolant<P,D>
 {
-    fn eval(&self, t: f64) -> [SVector<f64,D>; C];
-    fn low_t(&self) -> f64;
-    fn high_t(&self) -> f64;
-    fn y0(&self) -> [SVector<f64,D>; C];
-    fn y1(&self) -> [SVector<f64,D>; C];
+    segments: Vec<I>,
 }
 
-pub struct DenseOutput<T, const D: usize> 
-    where T: DenseInterpolant<D>
+impl<I, const P: usize, const D: usize> DenseOutput<I, P, D>
+    where I: DenseInterpolant<P,D>
 {
-    segments: Vec<T>
-}
-
-impl<T, const D: usize> DenseOutput<T, D>
-    where T: DenseInterpolant<D>
-{
-    pub fn new(segments: Vec<T>) -> Self {
+    pub fn new(segments: Vec<I>) -> Self {
         Self {segments: segments}
     }
     
@@ -45,88 +40,40 @@ impl<T, const D: usize> DenseOutput<T, D>
             .saturating_sub(1)
     }
 
-    pub fn eval(&self, t: f64) -> SVector<f64,D> {
+    pub fn eval(&self, t: f64) -> SMatrix<f64,D,P> {
         self.segments[self.find_index(t)].eval(t)
     }
 }
 
-pub struct DensePartitionedOutput<T, const C: usize, const D: usize> 
-    where T: DensePartitionedInterpolant<C,D>
+pub trait LazySolution<const P: usize, const D: usize>
 {
-    segments: Vec<T>
+    fn next(&mut self) -> (f64,SMatrix<f64,D,P>);
 }
 
-impl<T, const C: usize, const D: usize> DensePartitionedOutput<T, C, D>
-    where T: DensePartitionedInterpolant<C, D>
+pub trait LazyDenseSolution<I, const P: usize, const D: usize>
+    where I: DenseInterpolant<P,D>
 {
-    pub fn new(segments: Vec<T>) -> Self {
-        Self {segments: segments}
-    }
-    
-    fn find_index(&self, t: f64) -> usize {
-        self.segments
-            .partition_point(|segment| segment.low_t() <= t)
-            .saturating_sub(1)
-    }
-
-    pub fn eval(&self, t: f64) -> [SVector<f64,D>; C] {
-        self.segments[self.find_index(t)].eval(t)
-    }
+    fn next(&mut self) -> impl DenseInterpolant<P,D>;
 }
-
-// Lazy Solutions
-pub trait LazySolution<const D: usize>
-{
-    fn next(&mut self) -> (f64, SVector<f64,D>);
-}
-
-pub trait LazyDenseSolution<T, const D: usize>
-    where T: DenseInterpolant<D>
-{
-    fn next(&mut self) -> T;
-}
-
-pub trait LazyPartitionedSolution<const C: usize, const D: usize>
-{
-    fn next(&mut self) -> (f64,[SVector<f64,D>; C]);
-}
-
-pub trait LazyDensePartitionedSolution<T, const C: usize, const D: usize>
-    where T: DensePartitionedInterpolant<C,D>
-{
-    fn next(&mut self) -> T;
-}
-
-
 
 // Solvers
 
-pub trait Solver<const D: usize>
+pub trait Solver<const P: usize, const D: usize>
 {
-    // Returns a vector of all points sampled during computation, stored in tuples form (time, state)
-    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SVector<f64,D>)> 
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+    fn solve<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)> 
+        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 
-    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazySolution<D>
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazySolution<P,D>
+        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 }
 
-pub trait DenseSolver<const D: usize> : Solver<D>
+pub trait DenseSolver<const P: usize, const D: usize> : Solver<P,D>
 {
-    type InterpolantType: DenseInterpolant<{D}>;
+    type InterpolantType: DenseInterpolant<P,D>;
 
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType, D>)
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
+    fn solve_dense<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SMatrix<f64,D,P>)>,DenseOutput<Self::InterpolantType,P,D>)
+        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 
-    fn solve_dense_lazy<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType,D>
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>;
-}
-
-pub trait PartitionedSolver<const C: usize, const D: usize>
-{
-    fn solve<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,[SVector<f64,D>; C])> 
-        where F: Fn(f64,&SVector<f64,D>,&SVector<f64,D>) -> (SVector<f64,D>,SVector<f64,D>);
-
-    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyPartitionedSolution<C,D>
-        where F: Fn(f64,&SVector<f64,D>,&SVector<f64,D>) -> (SVector<f64,D>,SVector<f64,D>);
+    fn solve_dense_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType,P,D>
+        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 }

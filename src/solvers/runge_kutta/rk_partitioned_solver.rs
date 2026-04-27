@@ -1,17 +1,16 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-/* 
+
 use std::default::Default;
 
 use nalgebra::SVector;
 
-use crate::solvers::{DenseOutput, DenseSolver, LazyDenseSolution, LazySolution, Solver, runge_kutta::{rk_method::{MethodConfig, MethodController, MethodInterpolant, MethodInterpolator, RKController, RKInterpolator, RKMethod}, rk_stepper::RKStepper}};
-
+use crate::solvers::{DenseOutput, DenseSolver, LazyDenseSolution, LazySolution, Solver, runge_kutta::{prk_method::{PartitionedMethodConfig, PartitionedMethodController, PartitionedMethodInterpolant, PartitionedMethodInterpolator, PRKController, PRKInterpolator, PRKMethod}, rk_stepper::RKStepper}};
 
 // Lazy solutions
-pub struct RKLazySolution<F, Method, const S: usize, const E: usize, const D: usize> 
-    where Method: RKMethod<S, E>,
+pub struct PRKLazySolution<F, Method, const P: usize, const S: usize, const E: usize, const D: usize> 
+    where Method: PRKMethod<P, S, E>,
     F:  Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
 {
     cfg: MethodConfig<Method,S,E>,
@@ -230,4 +229,3 @@ impl<Method, const S: usize, const E: usize, const D: usize> DenseSolver<D> for 
         RKLazyDenseSolution::<_,Method, S, E, D>::new(self.cfg, ode, t_start, *y_start, ode(t_start, y_start))
     }
 }
-    */

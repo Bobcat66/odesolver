@@ -8,26 +8,26 @@ use std::marker::PhantomData;
 
 use nalgebra::SVector;
 
-use crate::solvers::{DenseInterpolant, common::{norm, select_initial_timestep}, runge_kutta::{adaptive_rk::{AdaptiveRKConfig, FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator, compute_new_h}, rk_method::{RKController, RKInterpolator, RKMethod}, rk_solver::RKSolver}};
+use crate::solvers::{DenseInterpolant, common::select_initial_timestep, runge_kutta::{adaptive_prk::{AdaptiveRKConfig, compute_new_h}, prk_method::{PRKController, PRKInterpolator, PRKMethod}}};
 
 pub struct DOPRI853 {}
 
 // Controller
 pub struct DOPRI853RKController<Method> 
-    where Method: RKMethod<13,2>
+    where Method: PRKMethod<1,13,2>
 {
     _marker: PhantomData<Method>
 }
 
 impl<Method> DOPRI853RKController<Method>
-    where Method: RKMethod<13,2>
+    where Method: PRKMethod<1,13,2>
 {
     const ERROR_EXPONENT: f64 = {-1.0/(Method::ERR_ORDER as f64 + 1.0)};
 }
 
 
-impl<Method> RKController<2> for DOPRI853RKController<Method>
-    where Method: RKMethod<13,2>
+impl<Method> PRKController<1,2> for DOPRI853RKController<Method>
+    where Method: PRKMethod<1,13,2>
 {
 
     type Config = AdaptiveRKConfig;
@@ -61,8 +61,8 @@ pub struct DOPRI853Interpolant<const D: usize> {
     t0: f64,
     t1: f64,
     h: f64,
-    y0: SVector<f64, D>,
-    y1: SVector<f64, D>,
+    y0: SVector<f64,D>,
+    y1: SVector<f64,D>,
     r: [SVector<f64,D>; 7]
 }
 
@@ -100,7 +100,7 @@ impl<const D: usize> DOPRI853Interpolant<D> {
     }
 }
 
-impl<const D: usize> DenseInterpolant<D> for DOPRI853Interpolant<D> {
+impl<const D: usize> DenseInterpolant<1,D> for DOPRI853Interpolant<D> {
     fn eval(&self, t: f64) -> SVector<f64,D> {
         self.eval_impl(self.get_theta(t))
     }
@@ -204,7 +204,7 @@ const DENSE: [[f64; 16]; 4] = [
 
 pub struct DOPRI853Interpolator {}
 
-impl RKInterpolator<13> for DOPRI853Interpolator
+impl PRKInterpolator<1,13> for DOPRI853Interpolator
 {
     type InterpolantType<const D: usize> = DOPRI853Interpolant<D>;
     fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; 13]) -> Self::InterpolantType<D> 
@@ -235,13 +235,13 @@ impl RKInterpolator<13> for DOPRI853Interpolator
 }
 // Method
 
-impl RKMethod<13,2> for DOPRI853 {
+impl PRKMethod<1,13,2> for DOPRI853 {
 
     type Controller = DOPRI853RKController<Self>;
     type Interpolator = DOPRI853Interpolator;
 
     const C: [f64; 13] = [0.0, 0.526001519587677318785587544488e-01, 0.789002279381515978178381316732e-01, 0.118350341907227396726757197510, 0.281649658092772603273242802490, 0.333333333333333333333333333333, 0.25, 0.307692307692307692307692307692, 0.651282051282051282051282051282, 0.6, 0.857142857142857142857142857142, 1.0, 1.0];
-    const A: [[f64; 13]; 13] = [
+    const A: [[[f64; 13]; 13]; 1] = [[
         [                  0.0,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
         [ 5.260015195876773e-2,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
         [1.9725056984537899e-2, 5.91751709536137e-2,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
@@ -255,14 +255,14 @@ impl RKMethod<13,2> for DOPRI853 {
         [-9.371424300859873e-1,                 0.0,                   0.0,     5.186372428844064,    1.0914373489967296,     -8.149787010746926, -1.852006565999696e1,  2.2739487099350504e1,     2.4936055526796524,    -3.0467644718982195,                   0.0,                  0.0, 0.0],
         [    2.273310147516538,                 0.0,                   0.0,  -1.053449546673725e1,   -2.0008720582248625,  -1.7958931863118799e1,  2.794888452941996e1,   -2.8589982771350237,      -8.87285693353063,   1.2360567175794303e1,  6.433927460157635e-1,                  0.0, 0.0],
         [ 5.429373411656876e-2,                 0.0,                   0.0,                   0.0,                   0.0,      4.450312892752409,   1.8915178993145004,    -5.801203960010585,   3.111643669578199e-1, -1.5216094966251608e-1, 2.0136540080403035e-1, 4.471061572777259e-2, 0.0]
-    ];
+    ]];
     
-    const B: [f64; 13] = [5.429373411656876e-2, 0.0, 0.0, 0.0, 0.0, 4.450312892752409, 1.8915178993145004, -5.801203960010585, 3.111643669578199e-1, -1.5216094966251608e-1, 2.0136540080403035e-1, 4.471061572777259e-2, 0.0];
-    const E_B: [[f64; 13]; 2] = [
+    const B: [[f64; 13]; 1] = [[5.429373411656876e-2, 0.0, 0.0, 0.0, 0.0, 4.450312892752409, 1.8915178993145004, -5.801203960010585, 3.111643669578199e-1, -1.5216094966251608e-1, 2.0136540080403035e-1, 4.471061572777259e-2, 0.0]];
+    const E_B: [[[f64; 13]; 2]; 1] = [[
         [                      0.1312004499419488073250102996e-1, 0.0, 0.0, 0.0, 0.0, -0.1225156446376204440720569753e+1, -0.4957589496572501915214079952, 0.1664377182454986536961530415e+1,                         -0.3503288487499736816886487290, 0.3341791187130174790297318841, 0.8192320648511571246570742613e-1,                          0.2235530786388629525884427845e-1, 0.0],
         [5.429373411656876e-2 - 0.244094488188976377952755905512, 0.0, 0.0, 0.0, 0.0,                  4.450312892752409,              1.8915178993145004,                -5.801203960010585, 3.111643669578199e-1 - 0.733846688281611857341361741547,         -1.5216094966251608e-1,             2.0136540080403035e-1, 4.471061572777259e-2 - 0.220588235294117647058823529412e-1, 0.0]
 
-    ];
+    ]];
     const FSAL: bool = true;
     
     const ORDER: usize = 8;

@@ -2,6 +2,7 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
+/* 
 use nalgebra::SVector;
 
 use crate::solvers::{DenseInterpolant, DenseOutput};
@@ -56,3 +57,4 @@ pub type MethodController<M,const S: usize, const E: usize> = <M as RKMethod<S,E
 pub type MethodConfig<M,const S: usize, const E: usize> = <<M as RKMethod<S,E>>::Controller as RKController<E>>::Config;
 pub type MethodInterpolator<M,const S: usize, const E: usize> = <M as RKMethod<S,E>>::Interpolator;
 pub type MethodInterpolant<M,const S: usize, const E: usize, const D: usize> = <<M as RKMethod<S,E>>::Interpolator as RKInterpolator<S>>::InterpolantType<D>;
+*/

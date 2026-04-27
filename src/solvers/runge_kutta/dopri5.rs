@@ -4,17 +4,17 @@
 
 // This is an implementation of the original Dormand-Prince method
 
-use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, rk_method::RKMethod, rk_solver::RKSolver};
+use crate::solvers::runge_kutta::{adaptive_prk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, prk_method::PRKMethod};
 
 pub struct DOPRI5 {}
 
-impl RKMethod<7,1> for DOPRI5 {
+impl PRKMethod<1,7,1> for DOPRI5 {
 
-    type Controller = FirstOrderAdaptiveRKController<Self,7>;
-    type Interpolator = ShampineRKInterpolator<Self, 5, 7>;
+    type Controller = FirstOrderAdaptiveRKController<Self,1,7>;
+    type Interpolator = ShampineRKInterpolator<Self,1, 5, 7>;
 
     const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
-    const A: [[f64; 7]; 7] = [
+    const A: [[[f64; 7]; 7]; 1] = [[
         [           0.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],
         [       1.0/5.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],
         [      3.0/40.0,        9.0/40.0,            0.0,          0.0,             0.0,       0.0, 0.0],
@@ -22,16 +22,16 @@ impl RKMethod<7,1> for DOPRI5 {
         [19372.0/6561.0, -25360.0/2187.0, 64448.0/6561.0, -212.0/729.0,             0.0,       0.0, 0.0],
         [ 9017.0/3168.0,     -355.0/33.0, 46732.0/5247.0,   49.0/176.0, -5103.0/18656.0,       0.0, 0.0],
         [    35.0/384.0,             0.0,   500.0/1113.0,  125.0/192.0,  -2187.0/6784.0, 11.0/84.0, 0.0]
-    ];
-    const B: [f64; 7] = [35.0/384.0, 0.0, 500.0/1113.0, 125.0/192.0, -2187.0/6784.0, 11.0/84.0, 0.0];
-    const E_B: [[f64; 7]; 1] = [[-71.0/57600.0, 0.0, 71.0/16695.0, -71.0/1920.0, 17253.0/339200.0, -22.0/525.0, 1.0/40.0]];
+    ]];
+    const B: [[f64; 7]; 1] = [[35.0/384.0, 0.0, 500.0/1113.0, 125.0/192.0, -2187.0/6784.0, 11.0/84.0, 0.0]];
+    const E_B: [[[f64; 7]; 1]; 1] = [[[-71.0/57600.0, 0.0, 71.0/16695.0, -71.0/1920.0, 17253.0/339200.0, -22.0/525.0, 1.0/40.0]]];
     const FSAL: bool = true;
     const ORDER: usize = 5;
     const ERR_ORDER: usize = 4;
 }
 
 impl ShampineConfig<5,7> for DOPRI5 {
-    const P: [[f64; 5]; 7] = [
+    const W: [[f64; 5]; 7] = [
         [0.0, 1.0,   -8048581381.0/2820520608.0,     8663915743.0/2820520608.0,  -12715105075.0/11282082432.0],
         [0.0, 0.0,                          0.0,                           0.0,                           0.0],
         [0.0, 0.0, 131558114200.0/32700410799.0,  -68118460800.0/10900136933.0,   87487479700.0/32700410799.0],
