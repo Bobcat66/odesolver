@@ -1,11 +1,11 @@
 // Copyright (c) Jesse Kane
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
-use std::{f32::consts::E, marker::PhantomData};
+use std::marker::PhantomData;
 
-use nalgebra::{ComplexField, SMatrix, SVector};
+use nalgebra::SMatrix;
 
-use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, fields::{Real, coerce_f64}, solvers::{DenseInterpolant, common::{norm, select_initial_timestep}, runge_kutta::prk_method::{PRKController, PRKInterpolator, PRKMethod}}};
+use crate::{algebra::{mapping::Mapping, polynomial::Polynomial}, solvers::{DenseInterpolant, common::{norm, select_initial_timestep}, runge_kutta::prk_method::{PRKController, PRKInterpolator, PRKMethod}}};
 
 // Controller
 #[derive(Copy, Clone)]
@@ -71,12 +71,12 @@ impl<Method, const P: usize, const S: usize> PRKController<P,1> for FirstOrderAd
         let scale = (y0.abs().sup(&(y1.abs())) * cfg.rtol).add_scalar(cfg.atol);
         let err_norm = norm(&err, &scale);
 
-        (err_norm <= coerce_f64(1.0),compute_new_h(err_norm, h, cfg.safety, cfg.max_step, cfg.min_step, cfg.max_factor, cfg.min_factor, Self::ERROR_EXPONENT))
+        (err_norm <= 1.0,compute_new_h(err_norm, h, cfg.safety, cfg.max_step, cfg.min_step, cfg.max_factor, cfg.min_factor, Self::ERROR_EXPONENT))
     }
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SMatrix<f64,D,P>, f0: &SMatrix<f64,D,P>, cfg: &AdaptiveRKConfig) -> f64
         where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
     {
-        select_initial_timestep(ode, y0, t0, f0, coerce_f64(cfg.atol), coerce_f64(cfg.rtol), Method::ERR_ORDER)
+        select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Method::ERR_ORDER)
     }
 }
 
