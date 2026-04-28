@@ -46,7 +46,7 @@ pub trait RKStepper<Tableau, T, const N: usize, const S: usize, const E: usize, 
         where F: Fn(T,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 }
 
-// N is the number of tableaux, P is the number of stage partitions, S is number of stages, E is the number of errors. B[0] is always the main solution, while B[1..n] are embedded solutions
+// N is the number of tableaux, P is the number of state partitions, S is number of stages, E is the number of errors. B[0] is always the main solution, while B[1..n] are embedded solutions
 pub trait RKTableau<T,const N: usize, const S: usize, const E: usize, const P: usize>
 {
     // Butcher's tableau

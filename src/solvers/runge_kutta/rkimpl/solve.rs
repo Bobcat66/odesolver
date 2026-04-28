@@ -6,6 +6,53 @@ use nalgebra::SMatrix;
 
 use crate::solvers::runge_kutta::rkimpl::common::{RKController, RKInterpolator, RKStepper, RKTableau};
 
+pub fn rk_step_impl<
+    ODE,Consumer,TimeConverter,
+    T,
+    const N: usize,
+    const S: usize,
+    const E: usize,
+    const D: usize,
+    const P: usize,
+    Tableau,
+    Controller,
+    Stepper
+>(
+    ode: &ODE,
+    time_converter: &TimeConverter,
+    t: &mut f64,
+    y: &mut SMatrix<f64,D,P>,
+    f: &mut SMatrix<f64,D,P>,
+    h: &mut f64,
+    k: &mut [SMatrix<f64,D,P>; S], 
+    e: &mut [SMatrix<f64,D,P>; E],
+    cfg: &Controller::Config,
+    y_start: &SMatrix<f64,D,P>, 
+    t_start: f64, 
+    t_end: f64, 
+    verbose: bool
+) -> (f64, SMatrix<f64,D,P>)
+    where ODE: Fn(T,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>,
+    TimeConverter: Fn(f64) -> T,
+    Tableau: RKTableau<T,N,S,E,P>,
+    Controller: RKController<T,E,P>,
+    Stepper: RKStepper<Tableau,T,N,S,E,P>
+{
+    let mut accepted = false;
+    let mut new_t = self.t;
+    let mut new_y = self.y;
+    while !accepted {
+        new_t = self.t + self.h;
+        new_y = PRKStepper::<Method,P,S,E>::step_partitioned(&mut self.k, &mut self.e, &self.ode, self.t, &self.y, &self.f, self.h);
+        let time_control = PRKMethodController::<Method,P,S,E>::get_next_step(&new_y, &self.e, &self.y, self.h, &self.cfg);
+        accepted = time_control.0;
+        self.h = time_control.1; 
+    }
+    self.y = new_y;
+    self.t = new_t;
+    self.f = if Method::FSAL {self.k[S-1]} else {(self.ode)(&SVector::<f64,P>::repeat(self.t), &self.y)};
+    (self.t,self.y)
+}
 // F is the type of the function defining the ODE, T is the type of a function that can convert between f64 and time type
 pub fn rk_solve_impl<
     ODE,Consumer,TimeConverter,
@@ -17,7 +64,6 @@ pub fn rk_solve_impl<
     const P: usize,
     Tableau,
     Controller,
-    Interpolator,
     Stepper
 >(
     ode: &ODE,
@@ -36,7 +82,6 @@ pub fn rk_solve_impl<
     TimeConverter: Fn(f64) -> T,
     Tableau: RKTableau<T,N,S,E,P>,
     Controller: RKController<T,E,P>,
-    Interpolator: RKInterpolator<T,S,P>,
     Stepper: RKStepper<Tableau,T,N,S,E,P>
 {
     let mut t = t_start;

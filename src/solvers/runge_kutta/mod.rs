@@ -4,14 +4,12 @@ use crate::solvers::runge_kutta::{dopri3::DOPRI3, dopri5::DOPRI5, dopri853::DOPR
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 pub mod dopri5;
-pub mod adaptive_rk;
 pub mod dopri853;
 pub mod dopri3;
-pub mod fixed_rk;
-pub mod rk_common;
 pub mod rk_stepper;
 pub mod rk_solver;
 pub mod rkimpl;
+pub mod lazy;
 
 pub type DOPRI3Solver<const D: usize> = PRKSolver<DOPRI3, 1,4, 1, D>;
 pub type DOPRI5Solver<const D: usize> = PRKSolver<DOPRI5, 1,7, 1, D>;

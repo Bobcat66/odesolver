@@ -4,7 +4,7 @@
 
 use nalgebra::{SMatrix, SVector};
 
-use crate::solvers::runge_kutta::rk_common::{RKStepper, RKTableau};
+use crate::solvers::runge_kutta::rkimpl::common::{RKStepper, RKTableau};
 
 pub struct ExplicitStepper<Tableau, const S: usize, const E: usize>
     where Tableau: RKTableau<f64,1,S,E,1> 

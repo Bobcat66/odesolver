@@ -141,17 +141,4 @@ impl PRKInterpolator<1,13> for DOPRI853Interpolator
         DOPRI853Interpolant::new(t0, t1, *y0, *y1, r)
     }
 }
-// Method
-
-impl PRKMethod<1,13,2> for DOPRI853 {
-
-    type Controller = DOPRI853RKController<Self>;
-    type Interpolator = DOPRI853Interpolator;
-
-    
-    const FSAL: bool = true;
-    
-    const ORDER: usize = 8;
-    const ERR_ORDER: usize = 7;
-}
 

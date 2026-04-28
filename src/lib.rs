@@ -6,3 +6,4 @@ pub mod solvers;
 pub mod interpolation;
 pub mod algebra;
 pub mod fields;
+pub mod ode;

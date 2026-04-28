@@ -4,7 +4,7 @@
 
 use nalgebra::{ArrayStorage, SMatrix, SVector};
 
-use crate::solvers::runge_kutta::rk_common::{RKStepper, RKTableau};
+use crate::solvers::runge_kutta::rkimpl::common::{RKStepper, RKTableau};
 
 const fn compute_time_vectors<const P: usize, const S: usize>(c: [[f64; S]; P]) -> [SVector<f64, P>; S]
 {
