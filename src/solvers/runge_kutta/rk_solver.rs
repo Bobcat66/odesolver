@@ -5,14 +5,14 @@
 use std::default::Default;
 use std::array;
 
-use nalgebra::SMatrix;
+use nalgebra::{SMatrix,SVector};
 
-use crate::{solvers::{DenseOutput, DenseSolver, LazyDenseSolution, LazySolution, Solver, runge_kutta::{prk_method::{PRKController, PRKInterpolator, PRKMethod, PRKMethodConfig, PRKMethodController, PRKMethodInterpolant, PRKMethodInterpolator}, prk_stepper::PRKStepper}}};
+use crate::solvers::{DenseOutput, DenseSolver, LazyDenseSolution, LazySolution, PartitionedDenseSolver, PartitionedSolver, Solver, runge_kutta::{rk_common::{PRKController, PRKInterpolator, PRKMethod, PRKMethodConfig, PRKMethodController, PRKMethodInterpolant, PRKMethodInterpolator}, rk_stepper::PRKStepper}};
 
 // Lazy solutions
 pub struct PRKLazySolution<F,Method,const P: usize,const S: usize,const E: usize,const D: usize> 
     where Method: PRKMethod<P,S,E>,
-    F:  Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F:  Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
     cfg: PRKMethodConfig<Method,P,S,E>,
     ode: F,
@@ -26,7 +26,7 @@ pub struct PRKLazySolution<F,Method,const P: usize,const S: usize,const E: usize
 
 impl<F, Method, const P: usize, const S: usize, const E: usize, const D: usize> PRKLazySolution<F, Method, P, S, E, D>
     where Method: PRKMethod<P,S,E>,
-    F:  Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F:  Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
     pub fn new(cfg: PRKMethodConfig<Method,P,S,E>,ode: F, t0: f64, y0: SMatrix<f64,D,P>, f0: SMatrix<f64,D,P>) -> Self
     {
@@ -46,7 +46,7 @@ impl<F, Method, const P: usize, const S: usize, const E: usize, const D: usize> 
 
 impl<F, Method, const P: usize, const S: usize, const E: usize, const D: usize> LazySolution<P,D> for PRKLazySolution<F,Method,P,S,E,D>
     where Method: PRKMethod<P, S, E>,
-    F:  Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F:  Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
 
     fn next(&mut self) -> (f64,SMatrix<f64,D,P>)
@@ -56,21 +56,21 @@ impl<F, Method, const P: usize, const S: usize, const E: usize, const D: usize> 
         let mut new_y = self.y;
         while !accepted {
             new_t = self.t + self.h;
-            new_y = PRKStepper::<Method,P,S,E>::step(&mut self.k, &mut self.e, &self.ode, self.t, &self.y, &self.f, self.h);
+            new_y = PRKStepper::<Method,P,S,E>::step_partitioned(&mut self.k, &mut self.e, &self.ode, self.t, &self.y, &self.f, self.h);
             let time_control = PRKMethodController::<Method,P,S,E>::get_next_step(&new_y, &self.e, &self.y, self.h, &self.cfg);
             accepted = time_control.0;
             self.h = time_control.1; 
         }
         self.y = new_y;
         self.t = new_t;
-        self.f = if Method::FSAL {self.k[S-1]} else {(self.ode)(self.t,&self.y)};
+        self.f = if Method::FSAL {self.k[S-1]} else {(self.ode)(&SVector::<f64,P>::repeat(self.t), &self.y)};
         (self.t,self.y)
     }
 }
 
 pub struct PRKLazyDenseSolution< F, Method,const P: usize,const S: usize,const E: usize,const D: usize> 
     where Method: PRKMethod<P,S,E>,
-    F:  Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F:  Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
     cfg: PRKMethodConfig<Method,P,S,E>,
     ode: F,
@@ -84,7 +84,7 @@ pub struct PRKLazyDenseSolution< F, Method,const P: usize,const S: usize,const E
 
 impl<F, Method,const P: usize, const S: usize, const E: usize, const D: usize> PRKLazyDenseSolution<F,Method,P, S, E, D>
     where Method: PRKMethod<P,S,E>,
-    F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
     pub fn new(cfg: PRKMethodConfig<Method,P,S,E>,ode: F, t0: f64, y0: SMatrix<f64,D,P>, f0: SMatrix<f64,D,P>) -> Self
     {
@@ -104,7 +104,7 @@ impl<F, Method,const P: usize, const S: usize, const E: usize, const D: usize> P
 
 impl<F, Method, const P: usize,const S: usize, const E: usize, const D: usize> LazyDenseSolution<PRKMethodInterpolant<Method,P,S,E,D>,P,D> for PRKLazyDenseSolution<F,Method,P,S,E,D>
     where Method: PRKMethod<P,S,E>,
-    F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
 {
     fn next(&mut self) -> PRKMethodInterpolant<Method, P, S, E, D>
     {
@@ -113,7 +113,7 @@ impl<F, Method, const P: usize,const S: usize, const E: usize, const D: usize> L
         let mut new_y = self.y;
         while !accepted {
             new_t = self.t + self.h;
-            new_y = PRKStepper::<Method,P,S,E>::step(&mut self.k, &mut self.e, &self.ode, self.t, &self.y, &self.f, self.h);
+            new_y = PRKStepper::<Method,P,S,E>::step_partitioned(&mut self.k, &mut self.e, &self.ode, self.t, &self.y, &self.f, self.h);
             let time_control = PRKMethodController::<Method,P,S,E>::get_next_step(&new_y, &self.e, &self.y, self.h, &self.cfg);
             accepted = time_control.0;
             self.h = time_control.1; 
@@ -121,7 +121,7 @@ impl<F, Method, const P: usize,const S: usize, const E: usize, const D: usize> L
         let out = PRKMethodInterpolator::<Method,P,S,E>::interpolate_stage(&self.ode, self.t, new_t, &self.y, &new_y, &self.k);
         self.y = new_y;
         self.t = new_t;
-        self.f = if Method::FSAL {self.k[S-1]} else {(self.ode)(self.t,&self.y)};
+        self.f = if Method::FSAL {self.k[S-1]} else {(self.ode)(&SVector::<f64,P>::repeat(self.t), &self.y)};
         out
     }
 }
@@ -148,7 +148,7 @@ impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> PRKS
 
     // Returns (steps,Vec(t,y))
     fn solve_impl<F,C>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, stage_consumer: &mut C, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)>
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>,
+        where F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>,
         C: FnMut(&[SMatrix<f64,D,P>; S]) -> ()
     {
         let k = &mut self.k;
@@ -157,7 +157,7 @@ impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> PRKS
 
         let mut t = t_start;
         let mut y = *y_start;
-        let mut f = ode(t_start,y_start);
+        let mut f = ode(&SVector::<f64,P>::repeat(t_start), y_start);
         let mut h = PRKMethodController::<Method,P,S,E>::select_initial_timestep(ode, t_start, y_start, &f, cfg);
         let mut points: Vec<(f64,SMatrix<f64,D,P>)> = Vec::new();
         points.push((t_start,*y_start));
@@ -167,7 +167,7 @@ impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> PRKS
             if verbose {
                 println!("t={}, h={}, evaluating at t={}",t,h,new_t);
             }
-            let res = PRKStepper::<Method,P,S,E>::step(k, e, ode, t, &y, &f, h);
+            let res = PRKStepper::<Method,P,S,E>::step_partitioned(k, e, ode, t, &y, &f, h);
             if verbose {
                 println!("y(t)={:?}",res)
             }
@@ -175,7 +175,7 @@ impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> PRKS
             if time_control.0 {
                 y = res;
                 t = new_t;
-                f = if Method::FSAL {k[S-1]} else {ode(t,&y)};
+                f = if Method::FSAL {k[S-1]} else {ode(&SVector::<f64,P>::repeat(t), &y)};
                 points.push((t,y));
                 stage_consumer(k);
             }
@@ -196,36 +196,36 @@ impl<Method, const P: usize,const S: usize, const E: usize, const D: usize> Defa
     }
 }
 
-impl<Method, const P: usize, const S: usize, const E: usize, const D: usize> Solver<P,D> for PRKSolver<Method,P,S,E,D>
+impl<Method, const P: usize, const S: usize, const E: usize, const D: usize> PartitionedSolver<P,D> for PRKSolver<Method,P,S,E,D>
     where Method: PRKMethod<P,S,E>,
 {
-    fn solve<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)> 
-            where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    fn solve_partitioned<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)> 
+            where F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
     {
         self.solve_impl(ode, y_start, t_start, t_end, &mut (|_stage: &[SMatrix<f64,D,P>; S]| ()), verbose)
     }
-    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazySolution<P,D>
-            where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P> 
+    fn solve_lazy_partitioned<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazySolution<P,D>
+            where F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P> 
     {
-        PRKLazySolution::<_,Method,P,S,E,D>::new(self.cfg, ode, t_start, *y_start, ode(t_start, y_start))
+        PRKLazySolution::<_,Method,P,S,E,D>::new(self.cfg, ode, t_start, *y_start, ode(&SVector::<f64,P>::repeat(t_start), y_start))
     }
 }
 
-impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> DenseSolver<P,D> for PRKSolver<Method,P,S,E,D>
+impl<Method,const P: usize, const S: usize, const E: usize, const D: usize> PartitionedDenseSolver<P,D> for PRKSolver<Method,P,S,E,D>
     where Method: PRKMethod<P,S,E>
 {
     type InterpolantType = PRKMethodInterpolant<Method,P,S,E,D>;
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SMatrix<f64,D,P>)>,DenseOutput<Self::InterpolantType,P,D>)
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
+    fn solve_dense_partitioned<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SMatrix<f64,D,P>)>,DenseOutput<Self::InterpolantType,P,D>)
+        where F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>
     {
         let mut stages: Vec<[SMatrix<f64,D,P>; S]> = Vec::new();
         let points = self.solve_impl(ode, y_start, t_start, t_end, &mut (|stage: &[SMatrix<f64,D,P>; S]| stages.push(*stage)), verbose);
         let dense = PRKMethodInterpolator::<Method,P,S,E>::interpolate_dense(ode, &points, &stages);
         (points,dense)
     }
-    fn solve_dense_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType, P,D>
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P> 
+    fn solve_dense_lazy_partitioned<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType, P,D>
+        where F: Fn(&SVector<f64,P>,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P> 
     {
-        PRKLazyDenseSolution::<_,Method,P,S,E,D>::new(self.cfg, ode, t_start, *y_start, ode(t_start, y_start))
+        PRKLazyDenseSolution::<_,Method,P,S,E,D>::new(self.cfg, ode, t_start, *y_start, ode(&SVector::<f64,P>::repeat(t_start), y_start))
     }
 }

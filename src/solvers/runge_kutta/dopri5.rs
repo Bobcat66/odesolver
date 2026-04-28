@@ -4,7 +4,7 @@
 
 // This is an implementation of the original Dormand-Prince method
 
-use crate::solvers::runge_kutta::{adaptive_prk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, prk_method::PRKMethod};
+use crate::solvers::runge_kutta::{adaptive_rk::{FirstOrderAdaptiveRKController, ShampineConfig, ShampineRKInterpolator}, rk_common::PRKMethod};
 
 pub struct DOPRI5 {}
 
@@ -13,7 +13,7 @@ impl PRKMethod<1,7,1> for DOPRI5 {
     type Controller = FirstOrderAdaptiveRKController<Self,1,7>;
     type Interpolator = ShampineRKInterpolator<Self,1, 5, 7>;
 
-    const C: [f64; 7] = [0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0];
+    const C: [[f64; 7]; 1] = [[0.0, 1.0/5.0, 3.0/10.0, 4.0/5.0, 8.0/9.0, 1.0, 1.0]];
     const A: [[[f64; 7]; 7]; 1] = [[
         [           0.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],
         [       1.0/5.0,             0.0,            0.0,          0.0,             0.0,       0.0, 0.0],

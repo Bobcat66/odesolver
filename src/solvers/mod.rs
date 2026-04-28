@@ -2,7 +2,7 @@
 // You may use, distribute, and modify this software under the terms of
 // the license found in the root directory of this project
 
-use nalgebra::SMatrix;
+use nalgebra::{SMatrix,SVector};
 use std::vec::Vec;
 
 pub mod runge_kutta;
@@ -12,7 +12,7 @@ pub mod common;
 
 // Dense Solutions
 
-pub trait DenseInterpolant<const P: usize, const D: usize>
+pub trait DenseInterpolant<const D: usize, const P: usize>
 {
     fn eval(&self, t: f64) -> SMatrix<f64,D,P>;
     fn low_t(&self) -> f64;
@@ -21,14 +21,14 @@ pub trait DenseInterpolant<const P: usize, const D: usize>
     fn y1(&self) -> SMatrix<f64,D,P>;
 }
 
-pub struct DenseOutput<I, const P: usize, const D: usize> 
-    where I: DenseInterpolant<P,D>
+pub struct DenseOutput<I, const D: usize, const P: usize> 
+    where I: DenseInterpolant<D,P>
 {
     segments: Vec<I>,
 }
 
-impl<I, const P: usize, const D: usize> DenseOutput<I, P, D>
-    where I: DenseInterpolant<P,D>
+impl<I, const D: usize, const P: usize> DenseOutput<I, D, P>
+    where I: DenseInterpolant<D,P>
 {
     pub fn new(segments: Vec<I>) -> Self {
         Self {segments: segments}
@@ -50,30 +50,27 @@ pub trait LazySolution<const P: usize, const D: usize>
     fn next(&mut self) -> (f64,SMatrix<f64,D,P>);
 }
 
-pub trait LazyDenseSolution<I, const P: usize, const D: usize>
-    where I: DenseInterpolant<P,D>
+pub trait LazyDenseSolution<I, const D: usize, const P: usize>
+    where I: DenseInterpolant<D,P>
 {
-    fn next(&mut self) -> impl DenseInterpolant<P,D>;
+    fn next(&mut self) -> I;
 }
 
 // Solvers
 
-pub trait Solver<const P: usize, const D: usize>
+pub trait Solver<T, const P: usize>
 {
-    fn solve<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)> 
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
+    type InterpolantType<const D: usize>: DenseInterpolant<D,P>;
 
-    fn solve_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazySolution<P,D>
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
-}
+    fn solve<F, const D: usize>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> Vec<(f64,SMatrix<f64,D,P>)> 
+        where F: Fn(T,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 
-pub trait DenseSolver<const P: usize, const D: usize> : Solver<P,D>
-{
-    type InterpolantType: DenseInterpolant<P,D>;
+    fn solve_lazy<F, const D: usize>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazySolution<P,D>
+        where F: Fn(T,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
 
-    fn solve_dense<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SMatrix<f64,D,P>)>,DenseOutput<Self::InterpolantType,P,D>)
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
+    fn solve_dense<F, const D: usize>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64, t_end: f64, verbose: bool) -> (Vec<(f64,SVector<f64,D>)>,DenseOutput<Self::InterpolantType<D>,D,P>)
+        where F: Fn(T,&SVector<f64,D>) -> SVector<f64,D>;
 
-    fn solve_dense_lazy<F>(&mut self, ode: &F, y_start: &SMatrix<f64,D,P>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType,P,D>
-        where F: Fn(f64,&SMatrix<f64,D,P>) -> SMatrix<f64,D,P>;
+    fn solve_dense_lazy<F, const D: usize>(&mut self, ode: &F, y_start: &SVector<f64,D>, t_start: f64) -> impl LazyDenseSolution<Self::InterpolantType<D>,D,P>
+        where F: Fn(T,&SVector<f64,D>) -> SVector<f64,D>;
 }

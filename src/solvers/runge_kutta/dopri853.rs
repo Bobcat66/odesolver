@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use nalgebra::SVector;
 
-use crate::solvers::{DenseInterpolant, common::select_initial_timestep, runge_kutta::{adaptive_prk::{AdaptiveRKConfig, compute_new_h}, prk_method::{PRKController, PRKInterpolator, PRKMethod}}};
+use crate::solvers::{DenseInterpolant, common::select_initial_timestep, runge_kutta::{adaptive_rk::{AdaptiveRKConfig, compute_new_h}, rk_common::{PRKController, PRKInterpolator, PRKMethod}}};
 
 pub struct DOPRI853 {}
 
@@ -50,7 +50,7 @@ impl<Method> PRKController<1,2> for DOPRI853RKController<Method>
         (err_norm <= 1.0,compute_new_h(err_norm, h, cfg.safety, cfg.max_step, cfg.min_step, cfg.max_factor, cfg.min_factor, Self::ERROR_EXPONENT))
     }
     fn select_initial_timestep<F, const D: usize>(ode: &F, t0: f64, y0: &SVector<f64,D>, f0: &SVector<f64,D>, cfg: &AdaptiveRKConfig) -> f64
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+        where F: Fn(&SVector<f64,1>,&SVector<f64,D>) -> SVector<f64,D>
     {
         select_initial_timestep(ode, y0, t0, f0, cfg.atol, cfg.rtol, Method::ERR_ORDER)
     }
@@ -208,7 +208,7 @@ impl PRKInterpolator<1,13> for DOPRI853Interpolator
 {
     type InterpolantType<const D: usize> = DOPRI853Interpolant<D>;
     fn interpolate_stage<F, const D: usize>(ode: &F, t0: f64, t1: f64, y0: &SVector<f64,D>, y1: &SVector<f64,D>, stage: &[SVector<f64,D>; 13]) -> Self::InterpolantType<D> 
-        where F: Fn(f64,&SVector<f64,D>) -> SVector<f64,D>
+        where F: Fn(&SVector<f64,1>,&SVector<f64,D>) -> SVector<f64,D>
     {
         let mut k: [SVector<f64, D>; 16] = [SVector::<f64, D>::zeros(); 16];
         let h = t1 - t0;
@@ -218,7 +218,7 @@ impl PRKInterpolator<1,13> for DOPRI853Interpolator
             for j in 0..13 + i {
                 dy += k[j] * A_EXTRA[i][j] * h;
             }
-            k[13 + i] = ode(t0 + C_EXTRA[i] * h, &(y0 + dy));
+            k[13 + i] = ode(&SVector::<f64,1>::repeat(t0 + C_EXTRA[i] * h), &(y0 + dy));
         }
         let mut r = [SVector::<f64,D>::zeros(); 7];
         let delta_y = y1 - y0;
@@ -240,7 +240,7 @@ impl PRKMethod<1,13,2> for DOPRI853 {
     type Controller = DOPRI853RKController<Self>;
     type Interpolator = DOPRI853Interpolator;
 
-    const C: [f64; 13] = [0.0, 0.526001519587677318785587544488e-01, 0.789002279381515978178381316732e-01, 0.118350341907227396726757197510, 0.281649658092772603273242802490, 0.333333333333333333333333333333, 0.25, 0.307692307692307692307692307692, 0.651282051282051282051282051282, 0.6, 0.857142857142857142857142857142, 1.0, 1.0];
+    const C: [[f64; 13]; 1] = [[0.0, 0.526001519587677318785587544488e-01, 0.789002279381515978178381316732e-01, 0.118350341907227396726757197510, 0.281649658092772603273242802490, 0.333333333333333333333333333333, 0.25, 0.307692307692307692307692307692, 0.651282051282051282051282051282, 0.6, 0.857142857142857142857142857142, 1.0, 1.0]];
     const A: [[[f64; 13]; 13]; 1] = [[
         [                  0.0,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
         [ 5.260015195876773e-2,                 0.0,                   0.0,                   0.0,                   0.0,                    0.0,                  0.0,                   0.0,                    0.0,                    0.0,                   0.0,                  0.0, 0.0],
